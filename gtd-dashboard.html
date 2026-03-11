@@ -44,6 +44,20 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 .empty{color:#6b6456;font-size:13px;font-style:italic}
 .loading{color:#6b6456;font-size:13px}
 .error{background:#2a1810;border:1px solid #4a2820;border-radius:6px;padding:12px 16px;font-size:12px;color:#c97060}
+
+.data-card{background:#1a1814;border:1px solid #2a2820;border-radius:6px;padding:16px;margin-bottom:16px}
+.data-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.data-card-title{font-size:14px;font-weight:600}
+.copy-btn{background:transparent;border:1px solid #2a2820;border-radius:4px;color:#6b6456;cursor:pointer;padding:3px 10px;font-size:11px;font-family:Georgia,serif}
+.copy-btn:hover{color:#e8e0d0;border-color:#6b6456}
+.copy-btn.copied{border-color:#4a7c59;color:#4a7c59}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{padding:7px 12px;text-align:left;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#6b6456;font-weight:normal;border-bottom:1px solid #2a2820}
+.data-table td{padding:7px 12px;border-bottom:1px solid #1e1c18;color:#e8e0d0}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:#0f0e0c}
+.data-table td:last-child{text-align:right;font-family:monospace;color:#c9a96e}
+.data-table th:last-child{text-align:right}
 </style>
 </head>
 <body>
@@ -62,21 +76,26 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
     <button class="nav-btn" onclick="showList(this,'reference')" id="btn-reference">&#128193; Reference <span class="badge" id="c-reference">0</span></button>
     <div class="divider"></div>
     <button class="nav-btn" onclick="showList(this,'projects')" id="btn-projects">&#128193; Projects <span class="badge" id="c-projects">0</span></button>
+    <div class="divider"></div>
+    <button class="nav-btn" onclick="showList(this,'data')" id="btn-data">&#9776; Data <span class="badge" id="c-data">0</span></button>
+
   </div>
   <div class="main" id="main"><div class="loading">Loading your data...</div></div>
 </div>
 <script>
 var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
 var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
-var items = [], projects = [], currentList = "today", currentBtn = document.getElementById("btn-today");
+var items = [], projects = [], tables = [], currentList = "today", currentBtn = document.getElementById("btn-today");
 
 async function loadData() {
   try {
     var h = { apikey: SBK, Authorization: "Bearer " + SBK };
     var ir = await fetch(SBU + "/rest/v1/gtd_items?select=*&status=neq.completed&order=created_at.desc", { headers: h });
     var pr = await fetch(SBU + "/rest/v1/gtd_projects?select=*&order=created_at.desc", { headers: h });
+    var tr = await fetch(SBU + "/rest/v1/gtd_tables?select=*&order=created_at.desc", { headers: h });
     items = await ir.json();
     projects = await pr.json();
+    tables = await tr.json();
     updateCounts();
     renderList(currentList);
     document.getElementById("stats").innerHTML =
@@ -194,6 +213,30 @@ function renderList(list) {
     return;
   }
 
+
+  if (list === "data") {
+    var html = "<div class='list-header'><h2>&#9776; Data</h2><span class='count'>" + tables.length + " tables</span></div>";
+    if (!tables.length) { html += "<div class='empty'>No data tables yet.</div>"; main.innerHTML = html; return; }
+    tables.forEach(function(t, ti) {
+      html += "<div class='data-card'>";
+      html += "<div class='data-card-header'>";
+      html += "<span class='data-card-title'>" + esc(t.title) + "</span>";
+      if (t.area) html += "<span style='font-size:11px;color:#6b6456;background:#2a2820;padding:2px 8px;border-radius:10px;margin-right:8px'>" + esc(t.area) + "</span>";
+      html += "<button class='copy-btn' id='copybtn-" + ti + "' onclick='copyTable(" + ti + ")'>&#128203; Copy</button>";
+      html += "</div>";
+      html += "<table class='data-table' id='tbl-" + ti + "'><thead><tr>";
+      t.headers.forEach(function(h) { html += "<th>" + esc(h) + "</th>"; });
+      html += "</tr></thead><tbody>";
+      t.rows.forEach(function(row) {
+        html += "<tr>";
+        row.forEach(function(cell) { html += "<td>" + esc(cell) + "</td>"; });
+        html += "</tr>";
+      });
+      html += "</tbody></table></div>";
+    });
+    main.innerHTML = html; return;
+  }
+
   var filtered = items.filter(function(i){return i.list===list;});
   var html = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>";
   if (!filtered.length) html += "<div class='empty'>This list is empty.</div>";
@@ -235,6 +278,19 @@ async function completeItem(e, id) {
       setTimeout(function(){ loadData(); }, 500);
     }
   } catch(e) { alert("Error: " + e.message); }
+}
+
+
+function copyTable(ti) {
+  var t = tables[ti];
+  var text = t.headers.join('\t') + '\n';
+  t.rows.forEach(function(row) { text += row.join('\t') + '\n'; });
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById('copybtn-' + ti);
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = '\u{1F4CB} Copy'; btn.classList.remove('copied'); }, 2000);
+  });
 }
 
 function esc(s) {
