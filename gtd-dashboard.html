@@ -254,6 +254,11 @@ function renderList(list) {
     if (item.due_date) tags += "<span class='tag'>&#128197; " + esc(item.due_date) + "</span>";
     if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
     if (tags) html += "<div class='tags'>" + tags + "</div>";
+    // Show View Data button if this reference item has a linked table
+    var linkedTable = tables.find(function(t){ return t.reference_item_id === item.id; });
+    if (linkedTable) {
+      html += "<div style='margin-top:8px'><button onclick='event.stopPropagation();jumpToTable("" + linkedTable.id + "")' style='background:#2a2820;border:1px solid #3a3828;border-radius:4px;color:#c9a96e;cursor:pointer;padding:3px 10px;font-size:11px;font-family:Georgia,serif'>&#9776; View Data</button></div>";
+    }
     html += "</div></div></div>";
   });
   main.innerHTML = html;
@@ -280,6 +285,22 @@ async function completeItem(e, id) {
   } catch(e) { alert("Error: " + e.message); }
 }
 
+
+
+function jumpToTable(tableId) {
+  // Switch to data view and highlight the matching table
+  var btn = document.getElementById('btn-data');
+  showList(btn, 'data');
+  setTimeout(function() {
+    var cards = document.querySelectorAll('.data-card');
+    var idx = tables.findIndex(function(t){ return t.id === tableId; });
+    if (idx >= 0 && cards[idx]) {
+      cards[idx].scrollIntoView({ behavior: 'smooth' });
+      cards[idx].style.borderColor = '#c9a96e';
+      setTimeout(function(){ cards[idx].style.borderColor = ''; }, 2000);
+    }
+  }, 100);
+}
 
 function copyTable(ti) {
   var t = tables[ti];
