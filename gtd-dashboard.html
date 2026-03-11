@@ -148,13 +148,18 @@ function toggleProject(el) { el.classList.toggle("expanded"); }
 async function completeItem(e, id) {
   e.stopPropagation();
   try {
-    await fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
-      method: "PATCH",
-      headers: { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ status: "completed" })
+    var res = await fetch("https://vmzopccmnfccjvdrzsxe.supabase.co/functions/v1/gtd-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: id })
     });
+    var data = await res.json();
     items = items.filter(function(i){return i.id !== id;});
     updateCounts(); renderList(currentList);
+    if (data.recurring) {
+      // Reload to show the new instance
+      setTimeout(function(){ loadData(); }, 500);
+    }
   } catch(e) { alert("Error: " + e.message); }
 }
 
