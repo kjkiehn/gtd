@@ -53,7 +53,9 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 </div>
 <div class="layout">
   <div class="sidebar">
-    <button class="nav-btn active" onclick="showList(this,'inbox')" id="btn-inbox">&#11015; Inbox <span class="badge" id="c-inbox">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'today')" id="btn-today" class="nav-btn active">&#9728; Today <span class="badge" id="c-today">0</span></button>
+    <div class="divider"></div>
+    <button class="nav-btn" onclick="showList(this,'inbox')" id="btn-inbox">&#11015; Inbox <span class="badge" id="c-inbox">0</span></button>
     <button class="nav-btn" onclick="showList(this,'next')" id="btn-next">&#9889; Next Actions <span class="badge" id="c-next">0</span></button>
     <button class="nav-btn" onclick="showList(this,'waiting')" id="btn-waiting">&#8987; Waiting For <span class="badge" id="c-waiting">0</span></button>
     <button class="nav-btn" onclick="showList(this,'someday')" id="btn-someday">&#127793; Someday <span class="badge" id="c-someday">0</span></button>
@@ -66,7 +68,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 <script>
 var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
 var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
-var items = [], projects = [], currentList = "inbox", currentBtn = document.getElementById("btn-inbox");
+var items = [], projects = [], currentList = "today", currentBtn = document.getElementById("btn-today");
 
 async function loadData() {
   try {
@@ -88,10 +90,15 @@ async function loadData() {
 }
 
 function updateCounts() {
+  var today = new Date().toISOString().split("T")[0];
   ["inbox","next","waiting","someday","reference"].forEach(function(l) {
     document.getElementById("c-" + l).textContent = items.filter(function(i){return i.list===l;}).length;
   });
   document.getElementById("c-projects").textContent = projects.length;
+  var todayItems = items.filter(function(i){
+    return i.list === "next" && (!i.due_date || i.due_date <= today);
+  });
+  document.getElementById("c-today").textContent = todayItems.length;
 }
 
 function showList(btn, list) {
@@ -103,8 +110,32 @@ function showList(btn, list) {
 
 function renderList(list) {
   var main = document.getElementById("main");
-  var icons = {inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;",projects:"&#128193;"};
-  var labels = {inbox:"Inbox",next:"Next Actions",waiting:"Waiting For",someday:"Someday / Maybe",reference:"Reference",projects:"Projects"};
+  var today = new Date().toISOString().split("T")[0];
+  var icons = {today:"&#9728;",inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;",projects:"&#128193;"};
+  var labels = {today:"Today",inbox:"Inbox",next:"Next Actions",waiting:"Waiting For",someday:"Someday / Maybe",reference:"Reference",projects:"Projects"};
+
+
+  if (list === "today") {
+    var filtered = items.filter(function(i){
+      return i.list === "next" && (!i.due_date || i.due_date <= today);
+    });
+    var html = "<div class=\'list-header\'><h2>&#9728; Today</h2><span class=\'count\'>" + filtered.length + " items</span></div>";
+    if (!filtered.length) html += "<div class=\'empty\'>Nothing due today.</div>";
+    else filtered.forEach(function(item) {
+      html += "<div class=\'item\' onclick=\'toggleItem(this)\'>";
+      html += "<button class=\'circle\' onclick=\'completeItem(event,\"" + item.id + "\")\' title=\'Complete\'></button>";
+      html += "<div class=\'item-body\'><div class=\'item-title\'>" + esc(item.title) + "</div>";
+      html += "<div class=\'item-details\'>";
+      if (item.notes) html += "<div>" + esc(item.notes) + "</div>";
+      var tags = "";
+      if (item.project) tags += "<span class=\'tag\'>&#8599; " + esc(item.project) + "</span>";
+      if (item.area) tags += "<span class=\'tag\'>" + esc(item.area) + "</span>";
+      if (item.due_date) tags += "<span class=\'tag\'>&#128197; " + esc(item.due_date) + "</span>";
+      if (tags) html += "<div class=\'tags\'>" + tags + "</div>";
+      html += "</div></div></div>";
+    });
+    main.innerHTML = html; return;
+  }
 
   if (list === "projects") {
     var html = "<div class='list-header'><h2>" + icons.projects + " Projects</h2><span class='count'>" + projects.length + " items</span></div>";
