@@ -58,6 +58,14 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 .data-table tr:hover td{background:#0f0e0c}
 .data-table td:last-child{text-align:right;font-family:monospace;color:#c9a96e}
 .data-table th:last-child{text-align:right}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a2820;border:1px solid #c9a96e;border-radius:6px;padding:10px 16px;font-size:13px;color:#e8e0d0;display:flex;align-items:center;gap:12px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.toast.show{opacity:1;pointer-events:all}
+.toast-undo{background:transparent;border:1px solid #c9a96e;border-radius:4px;color:#c9a96e;cursor:pointer;padding:2px 10px;font-size:12px;font-family:Georgia,serif}
+.toast-undo:hover{background:#c9a96e;color:#0f0e0c}
+.archive-item{background:#1a1814;border:1px solid #1e1c18;border-radius:6px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:5px;opacity:0.7}
+.restore-btn{background:transparent;border:1px solid #2a2820;border-radius:4px;color:#6b6456;cursor:pointer;padding:2px 8px;font-size:11px;font-family:Georgia,serif;flex-shrink:0}
+.restore-btn:hover{color:#e8e0d0;border-color:#6b6456}
 </style>
 </head>
 <body>
@@ -78,6 +86,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
     <button class="nav-btn" onclick="showList(this,'projects')" id="btn-projects">&#128193; Projects <span class="badge" id="c-projects">0</span></button>
     <div class="divider"></div>
     <button class="nav-btn" onclick="showList(this,'data')" id="btn-data">&#9776; Data <span class="badge" id="c-data">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'archive')" id="btn-archive">&#128452; Archive</button>
 
   </div>
   <div class="main" id="main"><div class="loading">Loading your data...</div></div>
@@ -86,6 +95,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
 var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
 var items = [], projects = [], tables = [], currentList = "today", currentBtn = document.getElementById("btn-today");
+var undoItem = null, undoTimer = null;
 
 async function loadData() {
   try {
@@ -214,6 +224,32 @@ function renderList(list) {
   }
 
 
+  if (list === "archive") {
+    // Fetch completed items fresh
+    var h2 = { apikey: SBK, Authorization: "Bearer " + SBK };
+    fetch(SBU + "/rest/v1/gtd_items?select=*&status=eq.completed&order=updated_at.desc&limit=50", { headers: h2 })
+      .then(function(r){ return r.json(); })
+      .then(function(archived) {
+        var html = "<div class='list-header'><h2>&#128452; Archive</h2><span class='count'>" + archived.length + " items</span></div>";
+        if (!archived.length) { html += "<div class='empty'>No completed items yet.</div>"; main.innerHTML = html; return; }
+        archived.forEach(function(item) {
+          html += "<div class='archive-item'>";
+          html += "<div style='flex:1'>";
+          html += "<div style='font-size:13px;color:#6b6456;text-decoration:line-through'>" + esc(item.title) + "</div>";
+          if (item.area || item.list) {
+            html += "<div style='font-size:11px;color:#3a3828;margin-top:3px'>" + (item.area ? esc(item.area) + " · " : "") + esc(item.list) + "</div>";
+          }
+          html += "</div>";
+          html += "<button class='restore-btn' onclick='restoreItem("" + item.id + "")'>Restore</button>";
+          html += "</div>";
+        });
+        main.innerHTML = html;
+      });
+    main.innerHTML = "<div class='loading'>Loading archive...</div>";
+    return;
+  }
+
+
   if (list === "data") {
     var html = "<div class='list-header'><h2>&#9776; Data</h2><span class='count'>" + tables.length + " tables</span></div>";
     if (!tables.length) { html += "<div class='empty'>No data tables yet.</div>"; main.innerHTML = html; return; }
@@ -270,19 +306,45 @@ function toggleProject(el) { el.classList.toggle("expanded"); }
 async function completeItem(e, id) {
   e.stopPropagation();
   try {
-    var res = await fetch("https://vmzopccmnfccjvdrzsxe.supabase.co/functions/v1/gtd-complete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: id })
-    });
-    var data = await res.json();
+    // Optimistically remove from view and show undo toast
+    var item = items.find(function(i){ return i.id === id; });
+    if (!item) return;
+    undoItem = item;
     items = items.filter(function(i){return i.id !== id;});
     updateCounts(); renderList(currentList);
-    if (data.recurring) {
-      // Reload to show the new instance
-      setTimeout(function(){ loadData(); }, 500);
-    }
+    showToast(esc(item.title));
+
+    // Commit after 5 seconds unless undone
+    if (undoTimer) clearTimeout(undoTimer);
+    undoTimer = setTimeout(async function() {
+      undoItem = null;
+      var res = await fetch("https://vmzopccmnfccjvdrzsxe.supabase.co/functions/v1/gtd-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: id })
+      });
+      var data = await res.json();
+      if (data.recurring) setTimeout(function(){ loadData(); }, 300);
+    }, 5000);
   } catch(e) { alert("Error: " + e.message); }
+}
+
+function showToast(title) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = '"' + title + '" completed';
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 5500);
+}
+
+function undoComplete() {
+  if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+  if (undoItem) {
+    items.push(undoItem);
+    items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
+    undoItem = null;
+    updateCounts(); renderList(currentList);
+  }
+  document.getElementById('toast').classList.remove('show');
 }
 
 
@@ -314,6 +376,24 @@ function copyTable(ti) {
   });
 }
 
+
+async function restoreItem(id) {
+  try {
+    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+    var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
+      method: "PATCH", headers: h,
+      body: JSON.stringify({ status: "active" })
+    });
+    var data = await res.json();
+    if (data && data[0]) {
+      items.push(data[0]);
+      items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
+      updateCounts();
+    }
+    renderList("archive");
+  } catch(e) { alert("Error: " + e.message); }
+}
+
 function esc(s) {
   if (!s) return "";
   var d = document.createElement("div");
@@ -323,5 +403,9 @@ function esc(s) {
 
 loadData();
 </script>
+<div class="toast" id="toast">
+  <span id="toast-msg">Item completed</span>
+  <button class="toast-undo" onclick="undoComplete()">Undo</button>
+</div>
 </body>
 </html>
