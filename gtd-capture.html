@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>GTD Capture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0e0c;
+      color: #e8e0d0;
+      font-family: Georgia, 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      gap: 32px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #e8e0d0;
+    }
+
+    header p {
+      font-size: 12px;
+      color: #6b6456;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .capture-box {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      background: #1a1814;
+      border: 1px solid #2a2820;
+      border-radius: 10px;
+      padding: 16px;
+      color: #e8e0d0;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      line-height: 1.6;
+      resize: none;
+      min-height: 120px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: #6b6456; }
+    textarea::placeholder { color: #3a3628; }
+
+    .mic-btn {
+      width: 100%;
+      height: 72px;
+      border-radius: 10px;
+      border: 1.5px solid #2a2820;
+      background: #1a1814;
+      color: #9a9080;
+      font-size: 15px;
+      font-family: Georgia, serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+      letter-spacing: 0.03em;
+    }
+
+    .mic-btn:hover { border-color: #c9a96e; color: #c9a96e; }
+
+    .mic-btn.listening {
+      background: #1e1208;
+      border-color: #c9a96e;
+      color: #c9a96e;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,110,0.3); }
+      50% { box-shadow: 0 0 0 8px rgba(201,169,110,0); }
+    }
+
+    .mic-icon { font-size: 22px; }
+
+    .save-btn {
+      width: 100%;
+      height: 56px;
+      border-radius: 10px;
+      border: none;
+      background: #c9a96e;
+      color: #0f0e0c;
+      font-size: 15px;
+      font-family: Georgia, serif;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.2s;
+    }
+
+    .save-btn:hover { background: #d4b87a; }
+    .save-btn:disabled { background: #2a2820; color: #6b6456; cursor: default; }
+
+    .status {
+      text-align: center;
+      font-size: 13px;
+      min-height: 20px;
+      transition: all 0.3s;
+    }
+
+    .status.success { color: #6a9a6a; }
+    .status.error { color: #c97060; }
+    .status.saving { color: #6b6456; }
+
+    .recent {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .recent h2 {
+      font-size: 11px;
+      color: #6b6456;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .recent-item {
+      background: #1a1814;
+      border: 1px solid #2a2820;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #9a9080;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recent-item span { flex: 1; }
+
+    .recent-item time {
+      font-size: 11px;
+      color: #3a3628;
+      white-space: nowrap;
+      font-family: monospace;
+    }
+
+    .no-speech {
+      background: #2a1810;
+      border: 1px solid #4a2820;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #c97060;
+      text-align: center;
+      max-width: 480px;
+      width: 100%;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>GTD</h1>
+    <p>Quick Capture</p>
+  </header>
+
+  <div class="no-speech" id="noSpeech">
+    Voice not supported in this browser. Use Chrome or Safari on iOS.
+  </div>
+
+  <div class="capture-box">
+    <textarea id="captureText" placeholder="What's on your mind?" rows="4"></textarea>
+
+    <button class="mic-btn" id="micBtn">
+      <span class="mic-icon">🎙</span>
+      <span id="micLabel">Tap to speak</span>
+    </button>
+
+    <button class="save-btn" id="saveBtn" disabled>Save to Inbox</button>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="recent" id="recentSection" style="display:none">
+    <h2>Recently Captured</h2>
+    <div class="recent-list" id="recentList"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://vmzopccmnfccjvdrzsxe.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
+
+    const textarea = document.getElementById("captureText");
+    const micBtn = document.getElementById("micBtn");
+    const micLabel = document.getElementById("micLabel");
+    const saveBtn = document.getElementById("saveBtn");
+    const status = document.getElementById("status");
+    const recentSection = document.getElementById("recentSection");
+    const recentList = document.getElementById("recentList");
+    const noSpeech = document.getElementById("noSpeech");
+
+    let recognition = null;
+    let listening = false;
+    let captured = [];
+
+    // Enable save button when there's text
+    textarea.addEventListener("input", () => {
+      saveBtn.disabled = textarea.value.trim() === "";
+      status.textContent = "";
+      status.className = "status";
+    });
+
+    // Speech recognition setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      noSpeech.style.display = "block";
+      micBtn.style.display = "none";
+    } else {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        listening = true;
+        micBtn.classList.add("listening");
+        micLabel.textContent = "Listening…";
+        status.textContent = "";
+        status.className = "status";
+      };
+
+      recognition.onresult = (e) => {
+        let interim = "";
+        let final = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) final += e.results[i][0].transcript;
+          else interim += e.results[i][0].transcript;
+        }
+        textarea.value = (final || interim).trim();
+        saveBtn.disabled = textarea.value.trim() === "";
+      };
+
+      recognition.onend = () => {
+        listening = false;
+        micBtn.classList.remove("listening");
+        micLabel.textContent = "Tap to speak";
+        if (textarea.value.trim()) {
+          status.textContent = "Got it — review and save.";
+          status.className = "status saving";
+        }
+      };
+
+      recognition.onerror = (e) => {
+        listening = false;
+        micBtn.classList.remove("listening");
+        micLabel.textContent = "Tap to speak";
+        if (e.error !== "no-speech") {
+          status.textContent = `Mic error: ${e.error}`;
+          status.className = "status error";
+        }
+      };
+
+      micBtn.addEventListener("click", () => {
+        if (listening) {
+          recognition.stop();
+        } else {
+          textarea.value = "";
+          saveBtn.disabled = true;
+          recognition.start();
+        }
+      });
+    }
+
+    // Save to Supabase
+    saveBtn.addEventListener("click", async () => {
+      const title = textarea.value.trim();
+      if (!title) return;
+
+      saveBtn.disabled = true;
+      status.textContent = "Saving…";
+      status.className = "status saving";
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/gtd_items`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({ title, list: "inbox", status: "active" }),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        // Success
+        const [saved] = await res.json();
+        status.textContent = "✓ Saved to inbox";
+        status.className = "status success";
+
+        // Add to recent
+        captured.unshift({ title, time: new Date() });
+        if (captured.length > 5) captured.pop();
+        renderRecent();
+
+        // Clear after short delay
+        setTimeout(() => {
+          textarea.value = "";
+          saveBtn.disabled = true;
+          status.textContent = "";
+          status.className = "status";
+        }, 1500);
+
+      } catch (e) {
+        status.textContent = `Failed to save: ${e.message}`;
+        status.className = "status error";
+        saveBtn.disabled = false;
+      }
+    });
+
+    function renderRecent() {
+      if (captured.length === 0) {
+        recentSection.style.display = "none";
+        return;
+      }
+      recentSection.style.display = "block";
+      recentList.innerHTML = captured.map(c => `
+        <div class="recent-item">
+          <span>${c.title}</span>
+          <time>${c.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+        </div>
+      `).join("");
+    }
+
+    // Keyboard shortcut: Cmd/Ctrl+Enter to save
+    textarea.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        if (!saveBtn.disabled) saveBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
