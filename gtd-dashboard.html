@@ -79,6 +79,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
     <div class="divider"></div>
     <button class="nav-btn" onclick="showList(this,'projects')" id="btn-projects">&#128193; Projects <span class="badge" id="c-projects">0</span></button>
     <button class="nav-btn" onclick="showList(this,'data')" id="btn-data">&#9776; Data <span class="badge" id="c-data">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'areas')" id="btn-areas">&#9632; Areas</button>
     <button class="nav-btn" onclick="showList(this,'archive')" id="btn-archive">&#128452; Archive</button>
   </div>
   <div class="main" id="main"><div class="loading">Loading your data...</div></div>
@@ -246,6 +247,84 @@ function renderList(list) {
         h += "</tr>";
       });
       h += "</tbody></table></div>";
+    });
+    main.innerHTML = h;
+    return;
+  }
+
+
+  if (list === "areas") {
+    // Collect all unique areas
+    var areaSet = {};
+    items.forEach(function(i){ if (i.area) areaSet[i.area] = true; });
+    projects.forEach(function(p){ if (p.area) areaSet[p.area] = true; });
+    var areas = Object.keys(areaSet).sort();
+
+    var h = "<div class='list-header'><h2>&#9632; Areas</h2><span class='count'>" + areas.length + " clients</span></div>";
+    if (!areas.length) { h += "<div class='empty'>No areas defined yet.</div>"; main.innerHTML = h; return; }
+
+    areas.forEach(function(area) {
+      var aProjects = projects.filter(function(p){ return p.area === area; });
+      var aItems = items.filter(function(i){ return i.area === area && !i.project; });
+      var aNext = aItems.filter(function(i){ return i.list === "next"; });
+      var aWaiting = aItems.filter(function(i){ return i.list === "waiting"; });
+      var total = aProjects.length + aItems.length;
+
+      h += "<div class='item' onclick='this.classList.toggle("expanded")'>";
+      h += "<div class='item-body'>";
+      h += "<div style='display:flex;justify-content:space-between;align-items:center'>";
+      h += "<span class='item-title' style='font-size:15px;font-weight:700'>" + esc(area) + "</span>";
+      h += "<div style='display:flex;gap:6px;align-items:center'>";
+      if (aProjects.length) h += "<span class='tag'>" + aProjects.length + " project" + (aProjects.length !== 1 ? "s" : "") + "</span>";
+      if (aItems.length) h += "<span class='tag'>" + aItems.length + " action" + (aItems.length !== 1 ? "s" : "") + "</span>";
+      h += "<span style='color:#3a3628;font-size:11px'>&#9654;</span></div></div>";
+      h += "<div class='item-details'>";
+
+      // Projects
+      if (aProjects.length) {
+        h += "<div style='font-size:11px;color:#6b6456;margin-bottom:6px'>&#128193; PROJECTS</div>";
+        aProjects.forEach(function(p) {
+          var pNext = items.filter(function(i){ return i.project === p.name && i.list === "next"; });
+          var pWait = items.filter(function(i){ return i.project === p.name && i.list === "waiting"; });
+          h += "<div style='background:#0f0e0c;border:1px solid #2a2820;border-radius:4px;padding:8px 12px;margin-bottom:6px'>";
+          h += "<div style='font-size:12px;font-weight:600;margin-bottom:4px'>" + esc(p.name) + "</div>";
+          if (pNext.length) {
+            pNext.forEach(function(i){
+              h += "<div style='font-size:12px;color:#9a9080;padding:2px 0;display:flex;align-items:center;gap:6px'>";
+              h += "<button class='circle' style='width:14px;height:14px;flex-shrink:0' onclick='event.stopPropagation();completeItem(event,"" + i.id + "")' title='Complete'></button>";
+              h += "<span>&#9889; " + esc(i.title) + "</span></div>";
+            });
+          }
+          if (pWait.length) {
+            pWait.forEach(function(i){
+              h += "<div style='font-size:12px;color:#6b6456;padding:2px 0'>&#8987; " + esc(i.title) + "</div>";
+            });
+          }
+          if (!pNext.length && !pWait.length) {
+            h += "<div style='font-size:11px;color:#3a3628;font-style:italic'>No open actions</div>";
+          }
+          h += "</div>";
+        });
+      }
+
+      // Loose actions (not tied to a project)
+      if (aNext.length || aWaiting.length) {
+        h += "<div style='font-size:11px;color:#6b6456;margin-bottom:6px;margin-top:4px'>&#9889; STANDALONE ACTIONS</div>";
+        aNext.forEach(function(i){
+          h += "<div style='display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0f0e0c;border-radius:4px;border:1px solid #2a2820;margin-bottom:4px'>";
+          h += "<button class='circle' style='width:14px;height:14px;flex-shrink:0' onclick='event.stopPropagation();completeItem(event,"" + i.id + "")' title='Complete'></button>";
+          h += "<span style='font-size:12px;flex:1'>" + esc(i.title) + "</span></div>";
+        });
+        aWaiting.forEach(function(i){
+          h += "<div style='display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0f0e0c;border-radius:4px;border:1px solid #2a2820;margin-bottom:4px'>";
+          h += "<span style='font-size:12px;flex:1;color:#6b6456'>&#8987; " + esc(i.title) + "</span>";
+          if (i.waiting_for) h += "<span class='tag'>" + esc(i.waiting_for) + "</span>";
+          h += "</div>";
+        });
+      }
+
+      if (!total) h += "<div style='font-size:12px;color:#3a3628;font-style:italic'>Nothing active</div>";
+      h += "</div></div></div>";
     });
     main.innerHTML = h;
     return;
