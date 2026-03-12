@@ -349,7 +349,11 @@ function renderList(list) {
   // Generic list render (inbox, next, waiting, someday, reference)
   var icons = {inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;"};
   var labels = {inbox:"Inbox",next:"Next Actions",waiting:"Waiting For",someday:"Someday / Maybe",reference:"Reference"};
-  var filtered = items.filter(function(i){ return i.list === list; });
+  var filtered = items.filter(function(i){
+    if (i.list !== list) return false;
+    if (list === "next" && i.due_date && i.due_date > today) return false;
+    return true;
+  });
   var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>";
   if (!filtered.length) h += "<div class='empty'>This list is empty.</div>";
   else filtered.forEach(function(item){ h += renderItem(item); });
