@@ -177,8 +177,7 @@ function renderList(list) {
     var todayDay = days[new Date().getDay()];
     var filtered = items.filter(function(i){
       if (i.list !== "next") return false;
-      if (i.recurrence_day) return i.due_date && i.due_date <= today;
-      return !i.due_date || i.due_date <= today;
+      return i.due_date && i.due_date <= today;
     });
     var h = "<div class='list-header'><h2>&#9728; Today</h2><span class='count'>" + filtered.length + " items</span></div>";
     if (!filtered.length) h += "<div class='empty'>Nothing due today.</div>";
