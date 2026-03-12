@@ -349,14 +349,11 @@ function renderList(list) {
   // Generic list render (inbox, next, waiting, someday, reference)
   var icons = {inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;"};
   var labels = {inbox:"Inbox",next:"Next Actions",waiting:"Waiting For",someday:"Someday / Maybe",reference:"Reference"};
-  var days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
-  var todayDay = days[new Date().getDay()];
   var filtered = items.filter(function(i){
     if (i.list !== list) return false;
     if (list === "next") {
-      if (i.recurrence_day) return i.recurrence_day === todayDay;  // recurring: show only on designated day
-      if (i.due_date) return i.due_date <= today;                   // dated: show when due
-      return true;                                                   // no date: always show
+      if (i.due_date) return i.due_date <= today;  // only show when due date has arrived
+      return true;                                   // no due date: always show
     }
     return true;
   });
