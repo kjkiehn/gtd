@@ -354,10 +354,9 @@ function renderList(list) {
   var filtered = items.filter(function(i){
     if (i.list !== list) return false;
     if (list === "next") {
-      // Recurring items: only show on their designated day
-      if (i.recurrence_day) return i.recurrence_day === todayDay;
-      // Date-specific items: only show when due
-      if (i.due_date) return i.due_date <= today;
+      if (i.recurrence_day) return i.recurrence_day === todayDay;  // recurring: show only on designated day
+      if (i.due_date) return i.due_date <= today;                   // dated: show when due
+      return true;                                                   // no date: always show
     }
     return true;
   });
