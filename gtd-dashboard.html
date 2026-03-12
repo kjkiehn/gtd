@@ -345,6 +345,28 @@ function renderList(list) {
     return;
   }
 
+  // Reference — grouped by client/area
+  if (list === "reference") {
+    var refItems = items.filter(function(i){ return i.list === "reference"; });
+    var areaMap = {};
+    refItems.forEach(function(i){
+      var a = i.area || "General";
+      if (!areaMap[a]) areaMap[a] = [];
+      areaMap[a].push(i);
+    });
+    var areas = Object.keys(areaMap).sort();
+    var h = "<div class='list-header'><h2>&#128193; Reference</h2><span class='count'>" + refItems.length + " items</span></div>";
+    if (!refItems.length) { h += "<div class='empty'>No reference items yet.</div>"; main.innerHTML = h; return; }
+    areas.forEach(function(area) {
+      h += "<div style='margin-bottom:16px'>";
+      h += "<div style='font-size:11px;font-weight:700;color:#6b6456;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;padding:0 4px'>&#9632; " + esc(area) + "</div>";
+      areaMap[area].forEach(function(item){ h += renderItem(item); });
+      h += "</div>";
+    });
+    main.innerHTML = h;
+    return;
+  }
+
   // Generic list render (inbox, next, waiting, someday, reference)
   var icons = {inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;"};
   var labels = {inbox:"Inbox",next:"Next Actions",waiting:"Waiting For",someday:"Someday / Maybe",reference:"Reference"};
