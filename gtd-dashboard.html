@@ -367,12 +367,12 @@ function renderList(list) {
     fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>ENERGY:</span>";
     energies.forEach(function(e){
       var active = energyFilter === e;
-      fh += "<button onclick='event.stopPropagation();window._energyFilter=\"" + e + "\";showList(null,\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#c94a2a":"#2a2820") + ";background:" + (active?"#2a1008":"transparent") + ";color:" + (active?"#c94a2a":"#6b6456") + ";cursor:pointer'>" + e + "</button>";
+      fh += "<button onclick='event.stopPropagation();window._energyFilter=\"" + e + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#c94a2a":"#2a2820") + ";background:" + (active?"#2a1008":"transparent") + ";color:" + (active?"#c94a2a":"#6b6456") + ";cursor:pointer'>" + e + "</button>";
     });
     fh += "<span style='font-size:11px;color:#6b6456;margin-left:6px;margin-right:2px'>CONTEXT:</span>";
     contexts.forEach(function(c){
       var active = contextFilter === c;
-      fh += "<button onclick='event.stopPropagation();window._contextFilter=\"" + c + "\";showList(null,\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
+      fh += "<button onclick='event.stopPropagation();window._contextFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
 
