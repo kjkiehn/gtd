@@ -173,8 +173,12 @@ function renderList(list) {
   var today = new Date().toISOString().split("T")[0];
 
   if (list === "today") {
+    var days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+    var todayDay = days[new Date().getDay()];
     var filtered = items.filter(function(i){
-      return i.list === "next" && (!i.due_date || i.due_date <= today);
+      if (i.list !== "next") return false;
+      if (i.recurrence_day && i.recurrence_day === todayDay) return true;
+      return !i.due_date || i.due_date <= today;
     });
     var h = "<div class='list-header'><h2>&#9728; Today</h2><span class='count'>" + filtered.length + " items</span></div>";
     if (!filtered.length) h += "<div class='empty'>Nothing due today.</div>";
