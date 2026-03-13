@@ -133,13 +133,26 @@ async function loadData() {
 
 function updateCounts() {
   var today = new Date().toISOString().split("T")[0];
+  var visible = showPersonal ? allItems : allItems.filter(function(i){ return !i.is_personal; });
   ["inbox","next","waiting","someday","reference"].forEach(function(l) {
-    document.getElementById("c-" + l).textContent = items.filter(function(i){ return i.list === l; }).length;
+    var el = document.getElementById("c-" + l);
+    if (el) {
+      if (l === "next") {
+        el.textContent = visible.filter(function(i){ return i.list === "next" && (!i.due_date || i.due_date <= today); }).length;
+      } else {
+        el.textContent = visible.filter(function(i){ return i.list === l; }).length;
+      }
+    }
   });
   document.getElementById("c-projects").textContent = projects.length;
-  document.getElementById("c-data").textContent = tables.length;
-  document.getElementById("c-today").textContent = items.filter(function(i){
-    return i.list === "next" && (!i.due_date || i.due_date <= today);
+  var dataEl = document.getElementById("c-data");
+  if (dataEl) dataEl.textContent = tables.length;
+  document.getElementById("c-today").textContent = visible.filter(function(i){
+    return i.list === "next" && i.due_date && i.due_date <= today;
+  }).length;
+  var schedEl = document.getElementById("c-scheduled");
+  if (schedEl) schedEl.textContent = visible.filter(function(i){
+    return i.list === "next" && i.due_date && i.due_date > today;
   }).length;
 }
 
