@@ -171,7 +171,8 @@ function renderItem(item) {
 function renderList(list) {
   var main = document.getElementById("main");
   var today = new Date().toISOString().split("T")[0];
-  if (!showPersonal) items = items.filter(function(i){ return !i.is_personal; });
+  items = showPersonal ? allItems : allItems.filter(function(i){ return !i.is_personal; });
+  
 
   if (list === "today") {
     var days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
