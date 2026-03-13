@@ -488,6 +488,7 @@ async function completeItem(e, id) {
   var item = items.find(function(i){ return i.id === id; });
   if (!item) return;
   undoItem = item;
+  allItems = allItems.filter(function(i){ return i.id !== id; });
   items = items.filter(function(i){ return i.id !== id; });
   updateCounts();
   renderList(currentList);
@@ -511,6 +512,8 @@ async function completeItem(e, id) {
 function undoComplete() {
   if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
   if (undoItem) {
+    allItems.push(undoItem);
+    allItems.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
     items.push(undoItem);
     items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
     undoItem = null;
