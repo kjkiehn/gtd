@@ -65,7 +65,10 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 <body>
 <div class="header">
   <div style="display:flex;align-items:baseline"><h1>GTD</h1><span class="sub">Dashboard</span></div>
-  <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button id="personal-toggle" onclick="showPersonal=!showPersonal;this.textContent=showPersonal?'💼 Work':'🏠 Personal';renderList(currentList)" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:#0f0e0c;color:#6b6456;cursor:pointer">💼 Work</button>
+    <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
+  </div>
 </div>
 <div class="layout">
   <div class="sidebar">
