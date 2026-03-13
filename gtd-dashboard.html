@@ -76,6 +76,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
     <div class="divider"></div>
     <button class="nav-btn" onclick="showList(this,'inbox')" id="btn-inbox">&#11015; Inbox <span class="badge" id="c-inbox">0</span></button>
     <button class="nav-btn" onclick="showList(this,'next')" id="btn-next">&#9889; Next Actions <span class="badge" id="c-next">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'scheduled')" id="btn-scheduled">&#128197; Scheduled <span class="badge" id="c-scheduled">0</span></button>
     <button class="nav-btn" onclick="showList(this,'waiting')" id="btn-waiting">&#8987; Waiting For <span class="badge" id="c-waiting">0</span></button>
     <button class="nav-btn" onclick="showList(this,'someday')" id="btn-someday">&#127793; Someday <span class="badge" id="c-someday">0</span></button>
     <button class="nav-btn" onclick="showList(this,'reference')" id="btn-reference">&#128193; Reference <span class="badge" id="c-reference">0</span></button>
@@ -349,6 +350,28 @@ function renderList(list) {
         });
         main.innerHTML = h;
       });
+    return;
+  }
+
+  // Scheduled — future dated next actions
+  if (list === "scheduled") {
+    var scheduled = items.filter(function(i){ return i.list === "next" && i.due_date && i.due_date > today; });
+    scheduled.sort(function(a,b){ return a.due_date > b.due_date ? 1 : -1; });
+    var h = "<div class='list-header'><h2>&#128197; Scheduled</h2><span class='count'>" + scheduled.length + " items</span></div>";
+    if (!scheduled.length) { h += "<div class='empty'>Nothing scheduled for the future.</div>"; main.innerHTML = h; return; }
+    // Group by due date
+    var dateMap = {};
+    scheduled.forEach(function(i){
+      if (!dateMap[i.due_date]) dateMap[i.due_date] = [];
+      dateMap[i.due_date].push(i);
+    });
+    Object.keys(dateMap).sort().forEach(function(date) {
+      var d = new Date(date + 'T12:00:00');
+      var label = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+      h += "<div style='font-size:11px;font-weight:700;color:#6b6456;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px;padding:0 4px'>&#128197; " + label + "</div>";
+      dateMap[date].forEach(function(item){ h += renderItem(item); });
+    });
+    main.innerHTML = h;
     return;
   }
 
