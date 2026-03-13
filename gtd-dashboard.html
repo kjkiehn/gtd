@@ -454,6 +454,7 @@ function renderList(list) {
   });
   var energyFilter = window._energyFilter || "all";
   var contextFilter = window._contextFilter || "all";
+  var clientFilter = window._clientFilter || "all";
 
   if (list === "next") {
     var energies = ["all","high","medium","low"];
@@ -471,8 +472,19 @@ function renderList(list) {
     });
     fh += "</div>";
 
+    // Client filter row
+    var clients = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.area; }).map(function(i){ return i.area; }))].sort());
+    fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
+    fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>CLIENT:</span>";
+    clients.forEach(function(c){
+      var active = clientFilter === c;
+      fh += "<button onclick='event.stopPropagation();window._clientFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#7a9abf":"#2a2820") + ";background:" + (active?"#0a1525":"transparent") + ";color:" + (active?"#7a9abf":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
+    });
+    fh += "</div>";
+
     if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
     if (contextFilter !== "all") filtered = filtered.filter(function(i){ return i.context === contextFilter; });
+    if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.area === clientFilter; });
 
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else {
