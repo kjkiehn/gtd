@@ -91,7 +91,8 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 <script>
 var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
 var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
-var items = [], projects = [], tables = [];
+var items = [], projects = [], tables = [], allItems = [];
+var showPersonal = false;
 var currentList = "today", currentBtn = document.getElementById("btn-today");
 var undoItem = null, undoTimer = null;
 
@@ -111,6 +112,7 @@ async function loadData() {
       fetch(SBU + "/rest/v1/gtd_tables?select=*&order=created_at.desc", { headers: h })
     ]);
     items = await results[0].json();
+    allItems = items.slice();
     projects = await results[1].json();
     tables = await results[2].json();
     updateCounts();
@@ -456,7 +458,7 @@ async function restoreItem(id) {
   });
   var data = await res.json();
   if (data && data[0]) {
-    items.push(data[0]);
+    allItems = data[0].slice(); items.push(data[0]);
     items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
     updateCounts();
   }
