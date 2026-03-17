@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GTD Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh}
+.header{border-bottom:1px solid #2a2820;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+.sub{font-size:11px;color:#6b6456;letter-spacing:0.15em;text-transform:uppercase;margin-left:10px}
+.stats{font-size:12px;color:#6b6456;display:flex;gap:16px;align-items:center}
+.refresh{background:transparent;border:1px solid #2a2820;border-radius:4px;color:#6b6456;cursor:pointer;padding:3px 8px;font-size:11px;font-family:Georgia,serif}
+.refresh:hover{color:#e8e0d0;border-color:#6b6456}
+.layout{display:flex;height:calc(100vh - 53px);overflow:hidden}
+.sidebar{width:190px;border-right:1px solid #2a2820;padding:12px 0;flex-shrink:0;overflow-y:auto}
+.nav-btn{width:100%;background:transparent;border:none;border-left:2px solid transparent;color:#6b6456;cursor:pointer;padding:9px 18px;text-align:left;font-size:13px;font-family:Georgia,serif;display:flex;align-items:center;justify-content:space-between;transition:all 0.15s}
+.nav-btn:hover{color:#e8e0d0}
+.nav-btn.active{background:#1e1c18;border-left-color:#c9a96e;color:#e8e0d0}
+.badge{background:#2a2820;color:#6b6456;border-radius:10px;padding:1px 7px;font-size:11px;font-family:monospace}
+.nav-btn.active .badge{background:#c9a96e;color:#0f0e0c}
+.divider{border-top:1px solid #2a2820;margin:8px 0}
+.main{flex:1;overflow-y:auto;padding:20px 24px}
+.list-header{display:flex;align-items:baseline;gap:10px;margin-bottom:16px}
+.list-header h2{font-size:18px;font-weight:600}
+.count{font-size:12px;color:#6b6456}
+.item{background:#1a1814;border:1px solid #2a2820;border-radius:6px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;cursor:pointer;transition:border-color 0.15s}
+.item:hover{border-color:#3a3828}
+.item.expanded{border-color:#3a3828}
+.circle{width:18px;height:18px;border-radius:50%;border:1.5px solid #3a3628;background:transparent;cursor:pointer;flex-shrink:0;margin-top:1px;transition:all 0.15s}
+.circle:hover{background:#c9a96e;border-color:#c9a96e}
+.item-body{flex:1;min-width:0}
+.item-title{font-size:13px;line-height:1.4}
+.item-details{margin-top:8px;font-size:12px;color:#9a9080;display:none;flex-direction:column;gap:4px}
+.item.expanded .item-details{display:flex}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tag{background:#2a2820;color:#9a9080;padding:2px 8px;border-radius:10px;font-size:11px}
+.empty{color:#6b6456;font-size:13px;font-style:italic}
+.loading{color:#6b6456;font-size:13px}
+.error{background:#2a1810;border:1px solid #4a2820;border-radius:6px;padding:12px 16px;font-size:12px;color:#c97060}
+.view-data-btn{background:#2a2820;border:1px solid #3a3828;border-radius:4px;color:#c9a96e;cursor:pointer;padding:3px 10px;font-size:11px;font-family:Georgia,serif;margin-top:8px}
+.view-data-btn:hover{background:#3a3828}
+.data-card{background:#1a1814;border:1px solid #2a2820;border-radius:6px;padding:16px;margin-bottom:16px;transition:border-color 0.3s}
+.data-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.data-card-title{font-size:14px;font-weight:600}
+.copy-btn{background:transparent;border:1px solid #2a2820;border-radius:4px;color:#6b6456;cursor:pointer;padding:3px 10px;font-size:11px;font-family:Georgia,serif}
+.copy-btn:hover{color:#e8e0d0;border-color:#6b6456}
+.copy-btn.copied{border-color:#4a7c59;color:#4a7c59}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{padding:7px 12px;text-align:left;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#6b6456;font-weight:normal;border-bottom:1px solid #2a2820}
+.data-table td{padding:7px 12px;border-bottom:1px solid #1e1c18;color:#e8e0d0}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:#0f0e0c}
+.data-table td:last-child,.data-table th:last-child{text-align:right;font-family:monospace;color:#c9a96e}
+.archive-item{background:#1a1814;border:1px solid #1e1c18;border-radius:6px;padding:9px 14px;display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.restore-btn{background:transparent;border:1px solid #2a2820;border-radius:4px;color:#6b6456;cursor:pointer;padding:2px 8px;font-size:11px;font-family:Georgia,serif;flex-shrink:0}
+.restore-btn:hover{color:#e8e0d0;border-color:#6b6456}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a2820;border:1px solid #c9a96e;border-radius:6px;padding:10px 16px;font-size:13px;color:#e8e0d0;display:flex;align-items:center;gap:12px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.toast.show{opacity:1;pointer-events:all}
+.toast-undo{background:transparent;border:1px solid #c9a96e;border-radius:4px;color:#c9a96e;cursor:pointer;padding:2px 10px;font-size:12px;font-family:Georgia,serif}
+.toast-undo:hover{background:#c9a96e;color:#0f0e0c}
+
+/* Search */
+.search-btn{background:transparent;border:1px solid #2a2820;border-radius:4px;color:#6b6456;cursor:pointer;padding:3px 10px;font-size:11px;font-family:Georgia,serif;display:flex;align-items:center;gap:5px}
+.search-btn:hover{color:#e8e0d0;border-color:#6b6456}
+.search-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding-top:80px}
+.search-overlay.open{display:flex}
+.search-modal{background:#1a1814;border:1px solid #3a3828;border-radius:8px;width:100%;max-width:580px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+.search-input-wrap{display:flex;align-items:center;padding:14px 16px;gap:10px;border-bottom:1px solid #2a2820}
+.search-icon{color:#6b6456;font-size:14px;flex-shrink:0}
+.search-input{background:transparent;border:none;color:#e8e0d0;font-size:15px;font-family:Georgia,serif;outline:none;flex:1;caret-color:#c9a96e}
+.search-input::placeholder{color:#3a3828}
+.search-kbd{font-size:10px;color:#3a3828;border:1px solid #2a2820;border-radius:3px;padding:1px 5px;font-family:monospace;flex-shrink:0}
+.search-results{max-height:420px;overflow-y:auto}
+.search-empty{padding:24px;text-align:center;color:#6b6456;font-size:13px;font-style:italic}
+.search-group-label{padding:10px 16px 4px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b6456;font-weight:normal}
+.search-result{padding:10px 16px;cursor:pointer;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid #1e1c18;transition:background 0.1s}
+.search-result:hover,.search-result.focused{background:#0f0e0c}
+.search-result:last-child{border-bottom:none}
+.search-result-icon{font-size:12px;color:#6b6456;flex-shrink:0;margin-top:2px;width:16px;text-align:center}
+.search-result-body{flex:1;min-width:0}
+.search-result-title{font-size:13px;color:#e8e0d0;line-height:1.4}
+.search-result-title mark{background:transparent;color:#c9a96e;font-style:normal}
+.search-result-meta{font-size:11px;color:#6b6456;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+.search-result-type{font-size:10px;color:#6b6456;border:1px solid #2a2820;border-radius:3px;padding:1px 6px;flex-shrink:0;margin-top:2px;font-family:monospace;text-transform:uppercase;letter-spacing:0.05em}
+.date-picker-popup{position:absolute;background:#1a1814;border:1px solid #3a3828;border-radius:6px;padding:10px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:6px}
+.date-picker-popup input[type=date]{background:#0f0e0c;border:1px solid #3a3828;border-radius:4px;color:#e8e0d0;font-family:Georgia,serif;font-size:12px;padding:5px 8px;outline:none;color-scheme:dark}
+.date-picker-popup input[type=date]:focus{border-color:#c9a96e}
+.date-picker-actions{display:flex;gap:6px}
+.date-picker-save{background:#c9a96e;border:none;border-radius:4px;color:#0f0e0c;cursor:pointer;font-family:Georgia,serif;font-size:11px;font-weight:bold;padding:4px 10px}
+.date-picker-clear{background:transparent;border:1px solid #3a3828;border-radius:4px;color:#6b6456;cursor:pointer;font-family:Georgia,serif;font-size:11px;padding:4px 10px}
+.date-picker-clear:hover{color:#e8e0d0;border-color:#6b6456}
+.area-picker-popup{position:fixed;background:#1a1814;border:1px solid #3a3828;border-radius:6px;padding:8px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:4px;min-width:160px}
+.area-picker-option{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left}
+.area-picker-option:hover{background:#2a2820;color:#c9a96e}
+.area-picker-option.clear{color:#6b6456;border-top:1px solid #2a2820;margin-top:2px;padding-top:8px}
+.search-hint{padding:10px 16px;font-size:11px;color:#3a3828;border-top:1px solid #1e1c18;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="display:flex;align-items:baseline"><h1>GTD</h1><span class="sub">Dashboard</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div id="area-toggles" style="display:flex;gap:6px">
+    <button onclick="setArea('all')" id="tog-all" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #c94a2a;background:#2a1008;color:#c94a2a;cursor:pointer">All</button>
+    <button onclick="setArea('lava')" id="tog-lava" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">💼 Lava</button>
+    <button onclick="setArea('realestate')" id="tog-realestate" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🏠 Real Estate</button>
+    <button onclick="setArea('personal')" id="tog-personal" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">👤 Personal</button>
+  </div>
+    <button class="search-btn" onclick="openSearch()" title="Search (⌘K)">&#128269; Search <span class="search-kbd">⌘K</span></button>
+    <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
+  </div>
+</div>
+<div class="layout">
+  <div class="sidebar">
+    <button class="nav-btn active" onclick="showList(this,'today')" id="btn-today">&#9728; Today <span class="badge" id="c-today">0</span></button>
+    <div class="divider"></div>
+    <button class="nav-btn" onclick="showList(this,'inbox')" id="btn-inbox">&#11015; Inbox <span class="badge" id="c-inbox">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'next')" id="btn-next">&#9889; Next Actions <span class="badge" id="c-next">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'scheduled')" id="btn-scheduled">&#128197; Scheduled <span class="badge" id="c-scheduled">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'waiting')" id="btn-waiting">&#8987; Waiting For <span class="badge" id="c-waiting">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'someday')" id="btn-someday">&#127793; Someday <span class="badge" id="c-someday">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'reference')" id="btn-reference">&#128193; Reference <span class="badge" id="c-reference">0</span></button>
+    <div class="divider"></div>
+    <button class="nav-btn" onclick="showList(this,'projects')" id="btn-projects">&#128193; Projects <span class="badge" id="c-projects">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'data')" id="btn-data">&#9776; Data <span class="badge" id="c-data">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'areas')" id="btn-areas">&#9632; Areas</button>
+    <button class="nav-btn" onclick="showList(this,'archive')" id="btn-archive">&#128452; Archive</button>
+  </div>
+  <div class="main" id="main"><div class="loading">Loading your data...</div></div>
+</div>
+
+<!-- Search Overlay -->
+<div class="search-overlay" id="search-overlay" onclick="closeSearchIfOutside(event)">
+  <div class="search-modal" id="search-modal">
+    <div class="search-input-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input class="search-input" id="search-input" placeholder="Search everything..." autocomplete="off" oninput="onSearchInput(this.value)" onkeydown="onSearchKeydown(event)">
+      <span class="search-kbd">ESC</span>
+    </div>
+    <div class="search-results" id="search-results">
+      <div class="search-empty">Start typing to search across all items, projects, and data.</div>
+    </div>
+    <div class="search-hint"><span>&#8593;&#8595; navigate</span><span>&#9166; open</span><span>ESC close</span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toast-msg">Item completed</span>
+  <button class="toast-undo" onclick="undoComplete()">Undo</button>
+</div>
+<script>
+var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
+var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
+var items = [], projects = [], tables = [], allItems = [];
+var areaFilter = "all";
+var currentList = "today", currentBtn = document.getElementById("btn-today");
+var undoItem = null, undoTimer = null;
+var searchFocusIndex = -1;
+var searchDebounce = null;
+
+function esc(s) {
+  if (!s) return "";
+  var d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function loadData() {
+  try {
+    var h = { apikey: SBK, Authorization: "Bearer " + SBK };
+    var results = await Promise.all([
+      fetch(SBU + "/rest/v1/gtd_items?select=*&status=neq.completed&order=created_at.desc", { headers: h }),
+      fetch(SBU + "/rest/v1/gtd_projects?select=*&order=created_at.desc", { headers: h }),
+      fetch(SBU + "/rest/v1/gtd_tables?select=*&order=created_at.desc", { headers: h })
+    ]);
+    items = await results[0].json();
+    allItems = items.slice();
+    projects = await results[1].json();
+    tables = await results[2].json();
+    updateCounts();
+    renderList(currentList);
+    document.getElementById("stats").innerHTML =
+      items.filter(function(i){ return i.list === "inbox"; }).length + " inbox | " +
+      items.filter(function(i){ return i.list === "next"; }).length + " next | " +
+      projects.length + " projects " +
+      "<button class='refresh' onclick='loadData()'>&#8635; refresh</button>";
+  } catch(e) {
+    document.getElementById("main").innerHTML = "<div class='error'>Failed to load: " + e.message + "</div>";
+  }
+}
+
+// ---- SEARCH ----
+function openSearch() {
+  document.getElementById("search-overlay").classList.add("open");
+  setTimeout(function(){ document.getElementById("search-input").focus(); }, 50);
+  searchFocusIndex = -1;
+}
+
+function closeSearch() {
+  document.getElementById("search-overlay").classList.remove("open");
+  document.getElementById("search-input").value = "";
+  document.getElementById("search-results").innerHTML = "<div class='search-empty'>Start typing to search across all items, projects, and data.</div>";
+  searchFocusIndex = -1;
+}
+
+function closeSearchIfOutside(e) {
+  if (e.target === document.getElementById("search-overlay")) closeSearch();
+}
+
+function onSearchInput(val) {
+  if (searchDebounce) clearTimeout(searchDebounce);
+  if (!val.trim()) {
+    document.getElementById("search-results").innerHTML = "<div class='search-empty'>Start typing to search across all items, projects, and data.</div>";
+    searchFocusIndex = -1;
+    return;
+  }
+  searchDebounce = setTimeout(function(){ runSearch(val.trim()); }, 200);
+}
+
+async function runSearch(query) {
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK };
+  var q = encodeURIComponent(query.trim());
+  try {
+    var results = await Promise.all([
+      fetch(SBU + "/rest/v1/gtd_items?select=id,title,list,area,project,notes,status,waiting_for&fts=plfts(english)." + q + "&order=created_at.desc&limit=20", { headers: h }),
+      fetch(SBU + "/rest/v1/gtd_projects?select=id,name,area,status,outcome&fts=plfts(english)." + q + "&limit=10", { headers: h }),
+      fetch(SBU + "/rest/v1/gtd_tables?select=id,title,area&fts=plfts(english)." + q + "&limit=10", { headers: h })
+    ]);
+    var rItems = await results[0].json();
+    var rProjects = await results[1].json();
+    var rTables = await results[2].json();
+    renderSearchResults(query, rItems, rProjects, rTables);
+  } catch(e) {
+    document.getElementById("search-results").innerHTML = "<div class='search-empty'>Search failed. Try again.</div>";
+  }
+}
+
+function highlightMatch(text, query) {
+  if (!text || !query) return esc(text || "");
+  var escaped = esc(text);
+  var words = query.split(/\s+/).filter(Boolean);
+  words.forEach(function(w) {
+    var re = new RegExp("(" + w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ")", "gi");
+    escaped = escaped.replace(re, "<mark>$1</mark>");
+  });
+  return escaped;
+}
+
+var listIcons = {inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;"};
+var listLabels = {inbox:"Inbox",next:"Next",waiting:"Waiting",someday:"Someday",reference:"Reference",completed:"Archive"};
+
+function renderSearchResults(query, rItems, rProjects, rTables) {
+  var total = rItems.length + rProjects.length + rTables.length;
+  if (!total) {
+    document.getElementById("search-results").innerHTML = "<div class='search-empty'>No results for &ldquo;" + esc(query) + "&rdquo;</div>";
+    searchFocusIndex = -1;
+    return;
+  }
+  var h = "";
+  var resultIndex = 0;
+
+  if (rItems.length) {
+    h += "<div class='search-group-label'>Items (" + rItems.length + ")</div>";
+    rItems.forEach(function(item) {
+      var icon = item.status === "completed" ? "&#10003;" : (listIcons[item.list] || "&#9642;");
+      var meta = [];
+      if (item.area) meta.push(esc(item.area));
+      if (item.project) meta.push("&#8599; " + esc(item.project));
+      if (item.waiting_for) meta.push("&#8987; " + esc(item.waiting_for));
+      var listLabel = item.status === "completed" ? "Archive" : (listLabels[item.list] || item.list);
+      h += "<div class='search-result' data-type='item' data-id='" + esc(item.id) + "' data-list='" + esc(item.list) + "' data-status='" + esc(item.status) + "' onclick='handleSearchResult(this)' data-index='" + resultIndex + "'>";
+      h += "<span class='search-result-icon'>" + icon + "</span>";
+      h += "<div class='search-result-body'>";
+      h += "<div class='search-result-title'>" + highlightMatch(item.title, query) + "</div>";
+      if (meta.length) h += "<div class='search-result-meta'>" + meta.join("<span style='color:#3a3828'>&middot;</span>") + "</div>";
+      h += "</div>";
+      h += "<span class='search-result-type'>" + listLabel + "</span>";
+      h += "</div>";
+      resultIndex++;
+    });
+  }
+
+  if (rProjects.length) {
+    h += "<div class='search-group-label'>Projects (" + rProjects.length + ")</div>";
+    rProjects.forEach(function(p) {
+      h += "<div class='search-result' data-type='project' onclick='handleSearchResultProject()' data-index='" + resultIndex + "'>";
+      h += "<span class='search-result-icon'>&#128193;</span>";
+      h += "<div class='search-result-body'>";
+      h += "<div class='search-result-title'>" + highlightMatch(p.name, query) + "</div>";
+      if (p.area) h += "<div class='search-result-meta'>" + esc(p.area) + "</div>";
+      h += "</div>";
+      h += "<span class='search-result-type'>" + esc(p.status || "project") + "</span>";
+      h += "</div>";
+      resultIndex++;
+    });
+  }
+
+  if (rTables.length) {
+    h += "<div class='search-group-label'>Data Tables (" + rTables.length + ")</div>";
+    rTables.forEach(function(t) {
+      var tIdx = tables.findIndex(function(x){ return x.id === t.id; });
+      h += "<div class='search-result' data-type='table' data-table-id='" + esc(t.id) + "' onclick='handleSearchResultTable(\"" + esc(t.id) + "\")' data-index='" + resultIndex + "'>";
+      h += "<span class='search-result-icon'>&#9776;</span>";
+      h += "<div class='search-result-body'>";
+      h += "<div class='search-result-title'>" + highlightMatch(t.title, query) + "</div>";
+      if (t.area) h += "<div class='search-result-meta'>" + esc(t.area) + "</div>";
+      h += "</div>";
+      h += "<span class='search-result-type'>data</span>";
+      h += "</div>";
+      resultIndex++;
+    });
+  }
+
+  document.getElementById("search-results").innerHTML = h;
+  searchFocusIndex = -1;
+}
+
+function handleSearchResult(el) {
+  var list = el.getAttribute("data-list");
+  var status = el.getAttribute("data-status");
+  closeSearch();
+  if (status === "completed") {
+    var btn = document.getElementById("btn-archive");
+    showList(btn, "archive");
+  } else {
+    var btnId = "btn-" + list;
+    var btn = document.getElementById(btnId);
+    if (btn) showList(btn, list);
+  }
+}
+
+function handleSearchResultProject() {
+  closeSearch();
+  var btn = document.getElementById("btn-projects");
+  showList(btn, "projects");
+}
+
+function handleSearchResultTable(tableId) {
+  closeSearch();
+  var btn = document.getElementById("btn-data");
+  showList(btn, "data");
+  setTimeout(function() {
+    var idx = tables.findIndex(function(t){ return t.id === tableId; });
+    var card = document.getElementById("tbl-" + idx);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth" });
+      card.style.borderColor = "#c9a96e";
+      setTimeout(function(){ card.style.borderColor = ""; }, 2000);
+    }
+  }, 150);
+}
+
+function onSearchKeydown(e) {
+  var results = document.querySelectorAll(".search-result");
+  if (!results.length) return;
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    searchFocusIndex = Math.min(searchFocusIndex + 1, results.length - 1);
+    updateSearchFocus(results);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    searchFocusIndex = Math.max(searchFocusIndex - 1, 0);
+    updateSearchFocus(results);
+  } else if (e.key === "Enter") {
+    if (searchFocusIndex >= 0 && results[searchFocusIndex]) {
+      results[searchFocusIndex].click();
+    }
+  } else if (e.key === "Escape") {
+    closeSearch();
+  }
+}
+
+function updateSearchFocus(results) {
+  results.forEach(function(r, i) {
+    if (i === searchFocusIndex) {
+      r.classList.add("focused");
+      r.scrollIntoView({ block: "nearest" });
+    } else {
+      r.classList.remove("focused");
+    }
+  });
+}
+
+// Global keyboard shortcut
+document.addEventListener("keydown", function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    e.preventDefault();
+    openSearch();
+  }
+  if (e.key === "Escape" && document.getElementById("search-overlay").classList.contains("open")) {
+    closeSearch();
+  }
+});
+// ---- END SEARCH ----
+
+function updateCounts() {
+  var today = new Date().toISOString().split("T")[0];
+  var visible;
+  if (areaFilter === "all") {
+    visible = allItems.slice();
+  } else if (areaFilter === "lava") {
+    visible = allItems.filter(function(i){ return !i.is_personal && i.area !== "Real Estate"; });
+  } else if (areaFilter === "realestate") {
+    visible = allItems.filter(function(i){ return i.area === "Real Estate"; });
+  } else if (areaFilter === "personal") {
+    visible = allItems.filter(function(i){ return i.is_personal; });
+  } else {
+    visible = allItems.slice();
+  }
+  ["inbox","next","waiting","someday","reference"].forEach(function(l) {
+    var el = document.getElementById("c-" + l);
+    if (el) {
+      if (l === "next") {
+        el.textContent = visible.filter(function(i){ return i.list === "next" && (!i.due_date || i.due_date <= today); }).length;
+      } else {
+        el.textContent = visible.filter(function(i){ return i.list === l; }).length;
+      }
+    }
+  });
+  document.getElementById("c-projects").textContent = projects.length;
+  var dataEl = document.getElementById("c-data");
+  if (dataEl) dataEl.textContent = tables.length;
+  document.getElementById("c-today").textContent = visible.filter(function(i){
+    return i.list === "next" && i.due_date && i.due_date <= today;
+  }).length;
+  var schedEl = document.getElementById("c-scheduled");
+  if (schedEl) schedEl.textContent = visible.filter(function(i){
+    return i.list === "next" && i.due_date && i.due_date > today;
+  }).length;
+}
+
+function setArea(area) {
+  areaFilter = area;
+  var btns = ["all","lava","realestate","personal"];
+  btns.forEach(function(a) {
+    var el = document.getElementById("tog-" + a);
+    if (!el) return;
+    if (a === area) {
+      el.style.borderColor = "#c94a2a"; el.style.background = "#2a1008"; el.style.color = "#c94a2a";
+    } else {
+      el.style.borderColor = "#2a2820"; el.style.background = "transparent"; el.style.color = "#6b6456";
+    }
+  });
+  renderList(currentList);
+}
+
+function showList(btn, list) {
+  if (currentBtn) currentBtn.classList.remove("active");
+  btn.classList.add("active");
+  currentBtn = btn;
+  currentList = list;
+  renderList(list);
+}
+
+function renderItem(item) {
+  var h = "<div class='item' onclick='this.classList.toggle(\"expanded\")'>";
+  h += "<button class='circle' onclick='event.stopPropagation();completeItem(event,\"" + item.id + "\")' title='Complete'></button>";
+  h += "<div class='item-body'><div class='item-title'>" + esc(item.title) + "</div>";
+  h += "<div class='item-details'>";
+  if (item.notes) h += "<div>" + esc(item.notes) + "</div>";
+  var tags = "";
+  if (item.context) tags += "<span class='tag'>" + esc(item.context) + "</span>";
+  if (item.project) tags += "<span class='tag'>&#8599; " + esc(item.project) + "</span>";
+  tags += "<span class='tag area-tag' onclick='event.stopPropagation();openAreaPicker(\"" + item.id + "\",this)' title='Set area' style='cursor:pointer;border:1px solid #3a3828'>" + (item.area ? "  if (item.area) tags += "<span class='tag'>" + esc(item.area) + "</span>";#9632; " + esc(item.area) : "  if (item.area) tags += "<span class='tag'>" + esc(item.area) + "</span>";#9632; Set area") + "</span>";
+  if (item.energy) tags += "<span class='tag'>&#9889; " + esc(item.energy) + "</span>";
+  tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set due date' style='cursor:pointer;border:1px solid #3a3828'>" + (item.due_date ? "&#128197; " + esc(item.due_date) : "&#128197; Set date") + "</span>";
+  if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
+  if (tags) h += "<div class='tags'>" + tags + "</div>";
+  var linked = tables.find(function(t){ return t.reference_item_id === item.id; });
+  if (linked) {
+    h += "<button class='view-data-btn' onclick='event.stopPropagation();jumpToTable(\"" + linked.id + "\")'>&#9776; View Data</button>";
+  }
+  h += "</div></div></div>";
+  return h;
+}
+
+function renderList(list) {
+  var main = document.getElementById("main");
+  var today = new Date().toISOString().split("T")[0];
+  items = areaFilter === "all" ? allItems.slice() : areaFilter === "lava" ? allItems.filter(function(i){ return !i.is_personal && i.area !== "Real Estate"; }) : areaFilter === "realestate" ? allItems.filter(function(i){ return i.area === "Real Estate"; }) : allItems.filter(function(i){ return i.is_personal; });
+
+  if (list === "today") {
+    var filtered = items.filter(function(i){
+      if (i.list !== "next") return false;
+      return i.due_date && i.due_date <= today;
+    });
+    var h = "<div class='list-header'><h2>&#9728; Today</h2><span class='count'>" + filtered.length + " items</span></div>";
+    if (!filtered.length) h += "<div class='empty'>Nothing due today.</div>";
+    else filtered.forEach(function(item){ h += renderItem(item); });
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "projects") {
+    var h = "<div class='list-header'><h2>&#128193; Projects</h2><span class='count'>" + projects.length + " items</span></div>";
+    if (!projects.length) { h += "<div class='empty'>No projects yet.</div>"; main.innerHTML = h; return; }
+    projects.forEach(function(p) {
+      var pItems = items.filter(function(i){ return i.project === p.name; });
+      var nItems = pItems.filter(function(i){ return i.list === "next"; });
+      var wItems = pItems.filter(function(i){ return i.list === "waiting"; });
+      h += "<div class='item' onclick='this.classList.toggle(\"expanded\")'>";
+      h += "<div class='item-body'>";
+      h += "<div style='display:flex;justify-content:space-between;align-items:center'>";
+      h += "<span class='item-title'>" + esc(p.name) + "</span>";
+      h += "<div style='display:flex;gap:6px;align-items:center'>";
+      if (p.area) h += "<span class='tag'>" + esc(p.area) + "</span>";
+      h += "<span class='tag'>" + pItems.length + " action" + (pItems.length !== 1 ? "s" : "") + "</span>";
+      h += "<span style='color:#3a3628;font-size:11px'>&#9654;</span></div></div>";
+      if (p.outcome) h += "<div style='margin-top:4px;font-size:12px;color:#9a9080;font-style:italic'>" + esc(p.outcome) + "</div>";
+      h += "<div class='item-details'>";
+      if (!pItems.length) {
+        h += "<div style='font-size:12px;color:#3a3628;font-style:italic'>No actions yet</div>";
+      } else {
+        if (nItems.length) {
+          h += "<div style='font-size:11px;color:#6b6456;margin-bottom:4px'>&#9889; NEXT</div>";
+          nItems.forEach(function(i) {
+            h += "<div style='display:flex;align-items:center;gap:8px;padding:7px 10px;background:#0f0e0c;border-radius:4px;border:1px solid #2a2820;margin-bottom:4px'>";
+            h += "<button class='circle' style='width:16px;height:16px' onclick='event.stopPropagation();completeItem(event,\"" + i.id + "\")' title='Complete'></button>";
+            h += "<span style='font-size:12px;flex:1'>" + esc(i.title) + "</span></div>";
+          });
+        }
+        if (wItems.length) {
+          h += "<div style='font-size:11px;color:#6b6456;margin:6px 0 4px'>&#8987; WAITING</div>";
+          wItems.forEach(function(i) {
+            h += "<div style='display:flex;align-items:center;gap:8px;padding:7px 10px;background:#0f0e0c;border-radius:4px;border:1px solid #2a2820;margin-bottom:4px'>";
+            h += "<span style='font-size:12px;flex:1;color:#9a9080'>" + esc(i.title) + "</span>";
+            if (i.waiting_for) h += "<span class='tag'>" + esc(i.waiting_for) + "</span>";
+            h += "</div>";
+          });
+        }
+      }
+      h += "</div></div></div>";
+    });
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "data") {
+    var h = "<div class='list-header'><h2>&#9776; Data</h2><span class='count'>" + tables.length + " tables</span></div>";
+    if (!tables.length) { h += "<div class='empty'>No data tables yet.</div>"; main.innerHTML = h; return; }
+    tables.forEach(function(t, ti) {
+      h += "<div class='data-card' id='tbl-" + ti + "'>";
+      h += "<div class='data-card-header'>";
+      h += "<span class='data-card-title'>" + esc(t.title) + "</span>";
+      h += "<div style='display:flex;gap:8px;align-items:center'>";
+      if (t.area) h += "<span class='tag'>" + esc(t.area) + "</span>";
+      h += "<button class='copy-btn' id='copybtn-" + ti + "' onclick='copyTable(" + ti + ")'>&#128203; Copy</button>";
+      h += "</div></div>";
+      h += "<table class='data-table'><thead><tr>";
+      t.headers.forEach(function(hd){ h += "<th>" + esc(hd) + "</th>"; });
+      h += "</tr></thead><tbody>";
+      t.rows.forEach(function(row){
+        h += "<tr>";
+        row.forEach(function(cell){ h += "<td>" + esc(cell) + "</td>"; });
+        h += "</tr>";
+      });
+      h += "</tbody></table></div>";
+    });
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "areas") {
+    var areaSet = {};
+    items.forEach(function(i){ if (i.area) areaSet[i.area] = true; });
+    projects.forEach(function(p){ if (p.area) areaSet[p.area] = true; });
+    var areas = Object.keys(areaSet).sort();
+    var h = "<div class='list-header'><h2>&#9632; Areas</h2><span class='count'>" + areas.length + " clients</span></div>";
+    if (!areas.length) { h += "<div class='empty'>No areas defined yet.</div>"; main.innerHTML = h; return; }
+    areas.forEach(function(area) {
+      var aProjects = projects.filter(function(p){ return p.area === area; });
+      var aItems = items.filter(function(i){ return i.area === area && !i.project; });
+      var aNext = aItems.filter(function(i){ return i.list === "next"; });
+      var aWaiting = aItems.filter(function(i){ return i.list === "waiting"; });
+      h += "<div class='item' onclick='this.classList.toggle(\"expanded\")'>";
+      h += "<div class='item-body'>";
+      h += "<div style='display:flex;justify-content:space-between;align-items:center'>";
+      h += "<span class='item-title' style='font-size:15px;font-weight:700'>" + esc(area) + "</span>";
+      h += "<div style='display:flex;gap:6px;align-items:center'>";
+      if (aProjects.length) h += "<span class='tag'>" + aProjects.length + " project" + (aProjects.length !== 1 ? "s" : "") + "</span>";
+      if (aItems.length) h += "<span class='tag'>" + aItems.length + " action" + (aItems.length !== 1 ? "s" : "") + "</span>";
+      h += "<span style='color:#3a3628;font-size:11px'>&#9654;</span></div></div>";
+      h += "<div class='item-details'>";
+      if (aProjects.length) {
+        h += "<div style='font-size:11px;color:#6b6456;margin-bottom:6px'>&#128193; PROJECTS</div>";
+        aProjects.forEach(function(p) {
+          var pNext = items.filter(function(i){ return i.project === p.name && i.list === "next"; });
+          var pWait = items.filter(function(i){ return i.project === p.name && i.list === "waiting"; });
+          h += "<div style='background:#0f0e0c;border:1px solid #2a2820;border-radius:4px;padding:8px 12px;margin-bottom:6px'>";
+          h += "<div style='font-size:12px;font-weight:600;margin-bottom:4px'>" + esc(p.name) + "</div>";
+          pNext.forEach(function(i){
+            h += "<div style='font-size:12px;color:#9a9080;padding:2px 0;display:flex;align-items:center;gap:6px'>";
+            h += "<button class='circle' style='width:14px;height:14px;flex-shrink:0' onclick='event.stopPropagation();completeItem(event,\"" + i.id + "\")' title='Complete'></button>";
+            h += "<span>&#9889; " + esc(i.title) + "</span></div>";
+          });
+          pWait.forEach(function(i){
+            h += "<div style='font-size:12px;color:#6b6456;padding:2px 0'>&#8987; " + esc(i.title) + "</div>";
+          });
+          if (!pNext.length && !pWait.length) h += "<div style='font-size:11px;color:#3a3828;font-style:italic'>No open actions</div>";
+          h += "</div>";
+        });
+      }
+      if (aNext.length || aWaiting.length) {
+        h += "<div style='font-size:11px;color:#6b6456;margin-bottom:6px;margin-top:4px'>&#9889; STANDALONE ACTIONS</div>";
+        aNext.forEach(function(i){
+          h += "<div style='display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0f0e0c;border-radius:4px;border:1px solid #2a2820;margin-bottom:4px'>";
+          h += "<button class='circle' style='width:14px;height:14px;flex-shrink:0' onclick='event.stopPropagation();completeItem(event,\"" + i.id + "\")' title='Complete'></button>";
+          h += "<span style='font-size:12px;flex:1'>" + esc(i.title) + "</span></div>";
+        });
+        aWaiting.forEach(function(i){
+          h += "<div style='display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0f0e0c;border-radius:4px;border:1px solid #2a2820;margin-bottom:4px'>";
+          h += "<span style='font-size:12px;flex:1;color:#6b6456'>&#8987; " + esc(i.title) + "</span>";
+          if (i.waiting_for) h += "<span class='tag'>" + esc(i.waiting_for) + "</span>";
+          h += "</div>";
+        });
+      }
+      if (!aProjects.length && !aItems.length) h += "<div style='font-size:12px;color:#3a3628;font-style:italic'>Nothing active</div>";
+      h += "</div></div></div>";
+    });
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "archive") {
+    main.innerHTML = "<div class='loading'>Loading archive...</div>";
+    var h2 = { apikey: SBK, Authorization: "Bearer " + SBK };
+    fetch(SBU + "/rest/v1/gtd_items?select=*&status=eq.completed&order=updated_at.desc&limit=50", { headers: h2 })
+      .then(function(r){ return r.json(); })
+      .then(function(archived) {
+        var h = "<div class='list-header'><h2>&#128452; Archive</h2><span class='count'>" + archived.length + " items</span></div>";
+        if (!archived.length) { h += "<div class='empty'>No completed items yet.</div>"; main.innerHTML = h; return; }
+        archived.forEach(function(item) {
+          h += "<div class='archive-item'>";
+          h += "<div style='flex:1'>";
+          h += "<div style='font-size:13px;color:#6b6456;text-decoration:line-through'>" + esc(item.title) + "</div>";
+          h += "<div style='font-size:11px;color:#3a3828;margin-top:2px'>" + (item.area ? esc(item.area) + " &middot; " : "") + esc(item.list) + "</div>";
+          h += "</div>";
+          h += "<button class='restore-btn' onclick='restoreItem(\"" + item.id + "\")'>Restore</button>";
+          h += "</div>";
+        });
+        main.innerHTML = h;
+      });
+    return;
+  }
+
+  if (list === "scheduled") {
+    var scheduled = items.filter(function(i){ return i.list === "next" && i.due_date && i.due_date > today; });
+    scheduled.sort(function(a,b){ return a.due_date > b.due_date ? 1 : -1; });
+    var h = "<div class='list-header'><h2>&#128197; Scheduled</h2><span class='count'>" + scheduled.length + " items</span></div>";
+    if (!scheduled.length) { h += "<div class='empty'>Nothing scheduled for the future.</div>"; main.innerHTML = h; return; }
+    var dateMap = {};
+    scheduled.forEach(function(i){
+      if (!dateMap[i.due_date]) dateMap[i.due_date] = [];
+      dateMap[i.due_date].push(i);
+    });
+    Object.keys(dateMap).sort().forEach(function(date) {
+      var d = new Date(date + 'T12:00:00');
+      var label = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+      h += "<div style='font-size:11px;font-weight:700;color:#6b6456;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px;padding:0 4px'>&#128197; " + label + "</div>";
+      dateMap[date].forEach(function(item){ h += renderItem(item); });
+    });
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "reference") {
+    var refItems = items.filter(function(i){ return i.list === "reference"; });
+    var areaMap = {};
+    refItems.forEach(function(i){
+      var a = i.area || "General";
+      if (!areaMap[a]) areaMap[a] = [];
+      areaMap[a].push(i);
+    });
+    var areas = Object.keys(areaMap).sort();
+    var h = "<div class='list-header'><h2>&#128193; Reference</h2><span class='count'>" + refItems.length + " items</span></div>";
+    if (!refItems.length) { h += "<div class='empty'>No reference items yet.</div>"; main.innerHTML = h; return; }
+    areas.forEach(function(area) {
+      h += "<div style='margin-bottom:16px'>";
+      h += "<div style='font-size:11px;font-weight:700;color:#6b6456;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;padding:0 4px'>&#9632; " + esc(area) + "</div>";
+      areaMap[area].forEach(function(item){ h += renderItem(item); });
+      h += "</div>";
+    });
+    main.innerHTML = h;
+    return;
+  }
+
+  var icons = {inbox:"&#11015;",next:"&#9889;",waiting:"&#8987;",someday:"&#127793;",reference:"&#128193;"};
+  var labels = {inbox:"Inbox",next:"Next Actions",waiting:"Waiting For",someday:"Someday / Maybe",reference:"Reference"};
+  var filtered = items.filter(function(i){
+    if (i.list !== list) return false;
+    if (list === "next") {
+      if (i.due_date) return i.due_date <= today;
+      return true;
+    }
+    return true;
+  });
+  var energyFilter = window._energyFilter || "all";
+  var contextFilter = window._contextFilter || "all";
+  var clientFilter = window._clientFilter || "all";
+
+  if (list === "next") {
+    var energies = ["all","high","medium","low"];
+    var contexts = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort());
+    var fh = "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
+    fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>ENERGY:</span>";
+    energies.forEach(function(e){
+      var active = energyFilter === e;
+      fh += "<button onclick='event.stopPropagation();window._energyFilter=\"" + e + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#c94a2a":"#2a2820") + ";background:" + (active?"#2a1008":"transparent") + ";color:" + (active?"#c94a2a":"#6b6456") + ";cursor:pointer'>" + e + "</button>";
+    });
+    fh += "<span style='font-size:11px;color:#6b6456;margin-left:6px;margin-right:2px'>CONTEXT:</span>";
+    contexts.forEach(function(c){
+      var active = contextFilter === c;
+      fh += "<button onclick='event.stopPropagation();window._contextFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
+    });
+    fh += "</div>";
+    var clients = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.area; }).map(function(i){ return i.area; }))].sort());
+    fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
+    fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>CLIENT:</span>";
+    clients.forEach(function(c){
+      var active = clientFilter === c;
+      fh += "<button onclick='event.stopPropagation();window._clientFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#7a9abf":"#2a2820") + ";background:" + (active?"#0a1525":"transparent") + ";color:" + (active?"#7a9abf":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
+    });
+    fh += "</div>";
+    if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
+    if (contextFilter !== "all") filtered = filtered.filter(function(i){ return i.context === contextFilter; });
+    if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.area === clientFilter; });
+    var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
+  } else {
+    var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>";
+  }
+  if (!filtered.length) h += "<div class='empty'>This list is empty.</div>";
+  else filtered.forEach(function(item){ h += renderItem(item); });
+  main.innerHTML = h;
+}
+
+async function completeItem(e, id) {
+  e.stopPropagation();
+  var item = items.find(function(i){ return i.id === id; });
+  if (!item) return;
+  undoItem = item;
+  allItems = allItems.filter(function(i){ return i.id !== id; });
+  items = items.filter(function(i){ return i.id !== id; });
+  updateCounts();
+  renderList(currentList);
+  document.getElementById("toast-msg").textContent = "\u201c" + item.title + "\u201d completed";
+  var toast = document.getElementById("toast");
+  toast.classList.add("show");
+  if (undoTimer) clearTimeout(undoTimer);
+  undoTimer = setTimeout(function() {
+    toast.classList.remove("show");
+    undoItem = null;
+    fetch("https://vmzopccmnfccjvdrzsxe.supabase.co/functions/v1/gtd-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: id })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if (data.recurring) setTimeout(loadData, 300);
+    });
+  }, 5000);
+}
+
+function undoComplete() {
+  if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+  if (undoItem) {
+    allItems.push(undoItem);
+    allItems.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
+    items.push(undoItem);
+    items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
+    undoItem = null;
+    updateCounts();
+    renderList(currentList);
+  }
+  document.getElementById("toast").classList.remove("show");
+}
+
+async function restoreItem(id) {
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ status: "active" })
+  });
+  var data = await res.json();
+  if (data && data[0]) {
+    allItems = data[0].slice(); items.push(data[0]);
+    items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
+    updateCounts();
+  }
+  renderList("archive");
+}
+
+function copyTable(ti) {
+  var t = tables[ti];
+  var text = t.headers.join("\t") + "\n";
+  t.rows.forEach(function(row){ text += row.join("\t") + "\n"; });
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById("copybtn-" + ti);
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    setTimeout(function(){ btn.innerHTML = "&#128203; Copy"; btn.classList.remove("copied"); }, 2000);
+  });
+}
+
+function jumpToTable(tableId) {
+  var btn = document.getElementById("btn-data");
+  showList(btn, "data");
+  setTimeout(function() {
+    var idx = tables.findIndex(function(t){ return t.id === tableId; });
+    var card = document.getElementById("tbl-" + idx);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth" });
+      card.style.borderColor = "#c9a96e";
+      setTimeout(function(){ card.style.borderColor = ""; }, 2000);
+    }
+  }, 100);
+}
+
+
+var activeDatePicker = null;
+
+function openDatePicker(itemId, tagEl) {
+  // Close any existing picker
+  if (activeDatePicker) { activeDatePicker.remove(); activeDatePicker = null; }
+  var item = allItems.find(function(i){ return i.id === itemId; });
+  if (!item) return;
+
+  var popup = document.createElement("div");
+  popup.className = "date-picker-popup";
+  popup.innerHTML =
+    '<input type="date" id="dp-input" value="' + (item.due_date || '') + '">' +
+    '<div class="date-picker-actions">' +
+    '<button class="date-picker-save" onclick="saveDatePicker(\'' + itemId + '\')">Save</button>' +
+    '<button class="date-picker-clear" onclick="clearDatePicker(\'' + itemId + '\')">Clear</button>' +
+    '<button class="date-picker-clear" onclick="closeDatePicker()">Cancel</button>' +
+    '</div>';
+
+  // Position relative to the tag
+  var rect = tagEl.getBoundingClientRect();
+  popup.style.position = "fixed";
+  popup.style.top = (rect.bottom + 4) + "px";
+  popup.style.left = rect.left + "px";
+  document.body.appendChild(popup);
+  activeDatePicker = popup;
+  document.getElementById("dp-input").focus();
+
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener("click", closeDatePickerOutside, { once: true });
+  }, 50);
+}
+
+function closeDatePickerOutside(e) {
+  if (activeDatePicker && !activeDatePicker.contains(e.target)) {
+    activeDatePicker.remove(); activeDatePicker = null;
+  }
+}
+
+function closeDatePicker() {
+  if (activeDatePicker) { activeDatePicker.remove(); activeDatePicker = null; }
+}
+
+async function saveDatePicker(itemId) {
+  var val = document.getElementById("dp-input").value;
+  closeDatePicker();
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ due_date: val || null })
+  });
+  var data = await res.json();
+  if (data && data[0]) {
+    var idx = allItems.findIndex(function(i){ return i.id === itemId; });
+    if (idx !== -1) allItems[idx].due_date = data[0].due_date;
+    var idx2 = items.findIndex(function(i){ return i.id === itemId; });
+    if (idx2 !== -1) items[idx2].due_date = data[0].due_date;
+    updateCounts();
+    renderList(currentList);
+  }
+}
+
+async function clearDatePicker(itemId) {
+  closeDatePicker();
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ due_date: null })
+  });
+  var data = await res.json();
+  if (data && data[0]) {
+    var idx = allItems.findIndex(function(i){ return i.id === itemId; });
+    if (idx !== -1) allItems[idx].due_date = null;
+    var idx2 = items.findIndex(function(i){ return i.id === itemId; });
+    if (idx2 !== -1) items[idx2].due_date = null;
+    updateCounts();
+    renderList(currentList);
+  }
+}
+
+
+var activeAreaPicker = null;
+var AREAS = ["Goodles", "W Labs", "Wild", "Lava", "Real Estate", "Personal"];
+
+function openAreaPicker(itemId, tagEl) {
+  if (activeAreaPicker) { activeAreaPicker.remove(); activeAreaPicker = null; }
+  var popup = document.createElement("div");
+  popup.className = "area-picker-popup";
+  var html = "";
+  AREAS.forEach(function(a) {
+    html += "<button class='area-picker-option' onclick='saveArea(\"" + itemId + "\",\"" + a + "\")'>" + a + "</button>";
+  });
+  html += "<button class='area-picker-option clear' onclick='saveArea(\"" + itemId + "\",null)'>&#10005; Clear area</button>";
+  popup.innerHTML = html;
+  var rect = tagEl.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 4) + "px";
+  popup.style.left = rect.left + "px";
+  document.body.appendChild(popup);
+  activeAreaPicker = popup;
+  setTimeout(function(){
+    document.addEventListener("click", closeAreaPickerOutside, { once: true });
+  }, 50);
+}
+
+function closeAreaPickerOutside(e) {
+  if (activeAreaPicker && !activeAreaPicker.contains(e.target)) {
+    activeAreaPicker.remove(); activeAreaPicker = null;
+  }
+}
+
+async function saveArea(itemId, area) {
+  if (activeAreaPicker) { activeAreaPicker.remove(); activeAreaPicker = null; }
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ area: area })
+  });
+  var data = await res.json();
+  if (data && data[0]) {
+    var idx = allItems.findIndex(function(i){ return i.id === itemId; });
+    if (idx !== -1) allItems[idx].area = data[0].area;
+    var idx2 = items.findIndex(function(i){ return i.id === itemId; });
+    if (idx2 !== -1) items[idx2].area = data[0].area;
+    updateCounts();
+    renderList(currentList);
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
