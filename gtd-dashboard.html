@@ -751,10 +751,19 @@ async function completeItem(e, id) {
   var item = items.find(function(i){ return i.id === id; });
   if (!item) return;
   undoItem = item;
+  // Remove from UI immediately
   allItems = allItems.filter(function(i){ return i.id !== id; });
   items = items.filter(function(i){ return i.id !== id; });
   updateCounts();
   renderList(currentList);
+  // Write to Supabase immediately
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
+    method: "PATCH",
+    headers: h,
+    body: JSON.stringify({ status: "completed" })
+  });
+  // Show undo toast — undo will restore in UI and revert in Supabase
   document.getElementById("toast-msg").textContent = "\u201c" + item.title + "\u201d completed";
   var toast = document.getElementById("toast");
   toast.classList.add("show");
@@ -762,24 +771,13 @@ async function completeItem(e, id) {
   undoTimer = setTimeout(function() {
     toast.classList.remove("show");
     undoItem = null;
-    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
-    fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
-      method: "PATCH",
-      headers: h,
-      body: JSON.stringify({ status: "completed", updated_at: new Date().toISOString() })
-    }).then(function(r){ return r.json(); }).then(function(data){
-      // Reload data to ensure local state matches Supabase
-      loadData();
-    }).catch(function(err){
-      console.error("Complete failed:", err);
-      loadData();
-    });
   }, 5000);
 }
 
 function undoComplete() {
   if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
   if (undoItem) {
+    var id = undoItem.id;
     allItems.push(undoItem);
     allItems.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
     items.push(undoItem);
@@ -787,6 +785,12 @@ function undoComplete() {
     undoItem = null;
     updateCounts();
     renderList(currentList);
+    // Revert in Supabase
+    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json" };
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
+      method: "PATCH", headers: h,
+      body: JSON.stringify({ status: "active" })
+    });
   }
   document.getElementById("toast").classList.remove("show");
 }
