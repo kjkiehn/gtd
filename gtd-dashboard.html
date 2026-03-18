@@ -762,11 +762,17 @@ async function completeItem(e, id) {
   undoTimer = setTimeout(function() {
     toast.classList.remove("show");
     undoItem = null;
-    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json" };
+    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
     fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
       method: "PATCH",
       headers: h,
-      body: JSON.stringify({ status: "completed" })
+      body: JSON.stringify({ status: "completed", updated_at: new Date().toISOString() })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      // Reload data to ensure local state matches Supabase
+      loadData();
+    }).catch(function(err){
+      console.error("Complete failed:", err);
+      loadData();
     });
   }, 5000);
 }
