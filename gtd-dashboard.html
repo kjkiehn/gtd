@@ -986,7 +986,7 @@ function openListPicker(itemId, currentList, tagEl) {
   var html = "";
   LISTS.forEach(function(l) {
     var active = l.key === currentList;
-    html += "<button class='list-picker-option' style='" + (active ? "color:#c9a96e" : "") + "' onclick='saveList("" + itemId + "","" + l.key + "")'>" + l.label + "</button>";
+    html += "<button class='list-picker-option' style='" + (active ? "color:#c9a96e" : "") + "' onclick='saveList(\"" + itemId + "\",\"" + l.key + "\")'>" + l.label + "</button>";
   });
   popup.innerHTML = html;
   var rect = tagEl.getBoundingClientRect();
