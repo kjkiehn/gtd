@@ -95,6 +95,10 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 .area-picker-option{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left}
 .area-picker-option:hover{background:#2a2820;color:#c9a96e}
 .area-picker-option.clear{color:#6b6456;border-top:1px solid #2a2820;margin-top:2px;padding-top:8px}
+.list-picker-popup{position:fixed;background:#1a1814;border:1px solid #3a3828;border-radius:6px;padding:8px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:4px;min-width:160px}
+.list-picker-btn{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left;width:100%}
+.list-picker-btn:hover{background:#2a2820;color:#c9a96e}
+.list-picker-btn.cur{color:#c9a96e}
 .search-hint{padding:10px 16px;font-size:11px;color:#3a3828;border-top:1px solid #1e1c18;display:flex;justify-content:space-between}
 </style>
 </head>
@@ -467,6 +471,7 @@ function renderItem(item) {
   if (item.energy) tags += "<span class='tag'>&#9889; " + esc(item.energy) + "</span>";
   tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set due date' style='cursor:pointer;border:1px solid #3a3828'>" + (item.due_date ? "&#128197; " + esc(item.due_date) : "&#128197; Set date") + "</span>";
   if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
+  tags += "<span class='tag' data-lp-id='" + item.id + "' data-lp-list='" + item.list + "' onclick='event.stopPropagation();openLP(this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
   if (tags) h += "<div class='tags'>" + tags + "</div>";
   var linked = tables.find(function(t){ return t.reference_item_id === item.id; });
   if (linked) {
@@ -962,6 +967,49 @@ async function saveArea(itemId, area) {
     if (idx2 !== -1) items[idx2].area = data[0].area;
     updateCounts();
     renderList(currentList);
+  }
+}
+
+var _lp = null;
+var _lpLists = [{k:'inbox',l:'\u2b07 Inbox'},{k:'next',l:'\u26a1 Next Actions'},{k:'waiting',l:'\u231b Waiting For'},{k:'scheduled',l:'\ud83d\udcc5 Scheduled'},{k:'someday',l:'\ud83c\udf3f Someday'},{k:'reference',l:'\ud83d\udcc1 Reference'}];
+
+function openLP(el) {
+  if (_lp) { _lp.remove(); _lp = null; return; }
+  var id = el.getAttribute('data-lp-id');
+  var cur = el.getAttribute('data-lp-list');
+  var pop = document.createElement('div');
+  pop.className = 'list-picker-popup';
+  _lpLists.forEach(function(x) {
+    var btn = document.createElement('button');
+    btn.className = 'list-picker-btn' + (x.k === cur ? ' cur' : '');
+    btn.textContent = x.l;
+    btn.onclick = function(e) { e.stopPropagation(); moveToList(id, x.k); };
+    pop.appendChild(btn);
+  });
+  var r = el.getBoundingClientRect();
+  pop.style.top = (r.bottom + 4) + 'px';
+  pop.style.left = r.left + 'px';
+  document.body.appendChild(pop);
+  _lp = pop;
+  setTimeout(function() {
+    document.addEventListener('click', function _d(e) {
+      if (_lp && !_lp.contains(e.target)) { _lp.remove(); _lp = null; }
+      document.removeEventListener('click', _d);
+    });
+  }, 50);
+}
+
+async function moveToList(id, list) {
+  if (_lp) { _lp.remove(); _lp = null; }
+  var h = { apikey: SBK, Authorization: 'Bearer ' + SBK, 'Content-Type': 'application/json', Prefer: 'return=representation' };
+  var res = await fetch(SBU + '/rest/v1/gtd_items?id=eq.' + id, { method: 'PATCH', headers: h, body: JSON.stringify({ list: list }) });
+  var data = await res.json();
+  if (data && data[0]) {
+    var idx = allItems.findIndex(function(i) { return i.id === id; });
+    if (idx !== -1) allItems[idx].list = data[0].list;
+    var idx2 = items.findIndex(function(i) { return i.id === id; });
+    if (idx2 !== -1) items[idx2].list = data[0].list;
+    updateCounts(); renderList(currentList);
   }
 }
 
