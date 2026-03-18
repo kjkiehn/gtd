@@ -483,12 +483,23 @@ function renderList(list) {
 
   if (list === "today") {
     var filtered = items.filter(function(i){
-      if (i.list !== "next") return false;
+      if (i.list !== "next" && i.list !== "waiting") return false;
       return i.due_date && i.due_date <= today;
     });
+    var nextItems = filtered.filter(function(i){ return i.list === "next"; });
+    var waitingItems = filtered.filter(function(i){ return i.list === "waiting"; });
     var h = "<div class='list-header'><h2>&#9728; Today</h2><span class='count'>" + filtered.length + " items</span></div>";
-    if (!filtered.length) h += "<div class='empty'>Nothing due today.</div>";
-    else filtered.forEach(function(item){ h += renderItem(item); });
+    if (!filtered.length) { h += "<div class='empty'>Nothing due today.</div>"; }
+    else {
+      if (nextItems.length) {
+        h += "<div style='font-size:11px;color:#6b6456;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px'>&#9889; Next Actions</div>";
+        nextItems.forEach(function(item){ h += renderItem(item); });
+      }
+      if (waitingItems.length) {
+        h += "<div style='font-size:11px;color:#6b6456;letter-spacing:0.1em;text-transform:uppercase;margin:12px 0 8px'>&#8987; Waiting For</div>";
+        waitingItems.forEach(function(item){ h += renderItem(item); });
+      }
+    }
     main.innerHTML = h;
     return;
   }
