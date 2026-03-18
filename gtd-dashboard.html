@@ -470,7 +470,7 @@ function renderItem(item) {
   if (item.energy) tags += "<span class='tag'>&#9889; " + esc(item.energy) + "</span>";
   tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set due date' style='cursor:pointer;border:1px solid #3a3828'>" + (item.due_date ? "&#128197; " + esc(item.due_date) : "&#128197; Set date") + "</span>";
   if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
-  tags += "<span class='tag list-tag' onclick='event.stopPropagation();openListPicker("" + item.id + "","" + item.list + "",this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
+  tags += "<span class='tag list-tag' onclick='event.stopPropagation();openListPicker(\"" + item.id + "\",\"" + item.list + "\",this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
   if (tags) h += "<div class='tags'>" + tags + "</div>";
   var linked = tables.find(function(t){ return t.reference_item_id === item.id; });
   if (linked) {
