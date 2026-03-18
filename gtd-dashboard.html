@@ -95,9 +95,6 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 .area-picker-option{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left}
 .area-picker-option:hover{background:#2a2820;color:#c9a96e}
 .area-picker-option.clear{color:#6b6456;border-top:1px solid #2a2820;margin-top:2px;padding-top:8px}
-.list-picker-popup{position:fixed;background:#1a1814;border:1px solid #3a3828;border-radius:6px;padding:8px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:4px;min-width:160px}
-.list-picker-option{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left}
-.list-picker-option:hover{background:#2a2820;color:#c9a96e}
 .search-hint{padding:10px 16px;font-size:11px;color:#3a3828;border-top:1px solid #1e1c18;display:flex;justify-content:space-between}
 </style>
 </head>
@@ -470,7 +467,7 @@ function renderItem(item) {
   if (item.energy) tags += "<span class='tag'>&#9889; " + esc(item.energy) + "</span>";
   tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set due date' style='cursor:pointer;border:1px solid #3a3828'>" + (item.due_date ? "&#128197; " + esc(item.due_date) : "&#128197; Set date") + "</span>";
   if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
-  tags += "<span class='tag list-tag' onclick='event.stopPropagation();openListPicker(\"" + item.id + "\",\"" + item.list + "\",this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
+
   if (tags) h += "<div class='tags'>" + tags + "</div>";
   var linked = tables.find(function(t){ return t.reference_item_id === item.id; });
   if (linked) {
