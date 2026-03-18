@@ -479,7 +479,7 @@ function renderItem(item) {
 function renderList(list) {
   var main = document.getElementById("main");
   var today = new Date().toISOString().split("T")[0];
-  items = areaFilter === "all" ? allItems.slice() : areaFilter === "lava" ? allItems.filter(function(i){ return !i.is_personal && i.area !== "Real Estate"; }) : areaFilter === "realestate" ? allItems.filter(function(i){ return i.area === "Real Estate"; }) : allItems.filter(function(i){ return i.is_personal; });
+  items = areaFilter === "all" ? allItems.slice() : areaFilter === "lava" ? allItems.filter(function(i){ return !i.is_personal && i.area !== "Real Estate" && i.area !== "Personal"; }) : areaFilter === "realestate" ? allItems.filter(function(i){ return i.area === "Real Estate"; }) : allItems.filter(function(i){ return i.is_personal; });
 
   if (list === "today") {
     var filtered = items.filter(function(i){
