@@ -762,12 +762,11 @@ async function completeItem(e, id) {
   undoTimer = setTimeout(function() {
     toast.classList.remove("show");
     undoItem = null;
-    fetch("https://vmzopccmnfccjvdrzsxe.supabase.co/functions/v1/gtd-complete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: id })
-    }).then(function(r){ return r.json(); }).then(function(data){
-      if (data.recurring) setTimeout(loadData, 300);
+    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json" };
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
+      method: "PATCH",
+      headers: h,
+      body: JSON.stringify({ status: "completed" })
     });
   }, 5000);
 }
