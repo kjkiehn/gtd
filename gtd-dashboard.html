@@ -511,10 +511,10 @@ function renderList(list) {
     var h = "<div class='list-header'><h2>&#9728; Today</h2><span class='count'>" + filtered.length + " items</span></div>";
     // Filter bar
     h += "<div class='today-filter-bar'>";
-    h += "<label>Client:</label><select onchange='window._todayAreaFilter=this.value;renderList('today')'>";
+    h += "<label>Client:</label><select onchange='window._todayAreaFilter=this.value;window._renderToday()'>";
     todayAreas.forEach(function(a){ h += "<option value='" + esc(a) + "'" + (a===tf_area?" selected":"") + ">" + esc(a==="all"?"All Clients":a) + "</option>"; });
     h += "</select>";
-    h += "<label style='margin-left:8px'>Project:</label><select onchange='window._todayProjFilter=this.value;renderList('today')'>";
+    h += "<label style='margin-left:8px'>Project:</label><select onchange='window._todayProjFilter=this.value;window._renderToday()'>";
     todayProjects.forEach(function(p){ h += "<option value='" + esc(p) + "'" + (p===tf_proj?" selected":"") + ">" + esc(p==="all"?"All Projects":p) + "</option>"; });
     h += "</select>";
     h += "</div>";
@@ -1037,6 +1037,7 @@ async function moveToList(id, list) {
   }
 }
 
+window._renderToday = function() { renderList('today'); };
 loadData();
 </script>
 </body>
