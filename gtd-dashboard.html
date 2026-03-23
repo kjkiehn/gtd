@@ -112,9 +112,6 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
   <div style="display:flex;align-items:center;gap:10px">
     <div id="area-toggles" style="display:flex;gap:6px">
     <button onclick="toggleArea('all')" id="tog-all" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #c94a2a;background:#2a1008;color:#c94a2a;cursor:pointer">All</button>
-    <button onclick="toggleArea('goodles')" id="tog-goodles" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🍜 Goodles</button>
-    <button onclick="toggleArea('wlabs')" id="tog-wlabs" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🧴 W Labs</button>
-    <button onclick="toggleArea('wild')" id="tog-wild" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🌿 Wild</button>
     <button onclick="toggleArea('lava')" id="tog-lava" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">💼 Lava</button>
     <button onclick="toggleArea('realestate')" id="tog-realestate" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🏠 Real Estate</button>
     <button onclick="toggleArea('personal')" id="tog-personal" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">👤 Personal</button>
@@ -435,10 +432,7 @@ function updateCounts() {
 function applyAreaFilter(source) {
   if (areaFilters.has("all")) return source.slice();
   return source.filter(function(i) {
-    if (areaFilters.has("goodles") && i.area === "Goodles") return true;
-    if (areaFilters.has("wlabs") && i.area === "W Labs") return true;
-    if (areaFilters.has("wild") && i.area === "Wild") return true;
-    if (areaFilters.has("lava") && i.area === "Lava") return true;
+    if (areaFilters.has("lava") && !i.is_personal && i.area !== "Real Estate" && i.area !== "Personal" && i.area !== "template") return true;
     if (areaFilters.has("realestate") && i.area === "Real Estate") return true;
     if (areaFilters.has("personal") && (i.is_personal || i.area === "Personal")) return true;
     return false;
