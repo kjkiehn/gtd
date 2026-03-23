@@ -111,10 +111,13 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
   <div style="display:flex;align-items:baseline"><h1>GTD</h1><span class="sub">Dashboard</span></div>
   <div style="display:flex;align-items:center;gap:10px">
     <div id="area-toggles" style="display:flex;gap:6px">
-    <button onclick="setArea('all')" id="tog-all" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #c94a2a;background:#2a1008;color:#c94a2a;cursor:pointer">All</button>
-    <button onclick="setArea('lava')" id="tog-lava" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">💼 Lava</button>
-    <button onclick="setArea('realestate')" id="tog-realestate" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🏠 Real Estate</button>
-    <button onclick="setArea('personal')" id="tog-personal" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">👤 Personal</button>
+    <button onclick="toggleArea('all')" id="tog-all" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #c94a2a;background:#2a1008;color:#c94a2a;cursor:pointer">All</button>
+    <button onclick="toggleArea('goodles')" id="tog-goodles" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🍜 Goodles</button>
+    <button onclick="toggleArea('wlabs')" id="tog-wlabs" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🧴 W Labs</button>
+    <button onclick="toggleArea('wild')" id="tog-wild" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🌿 Wild</button>
+    <button onclick="toggleArea('lava')" id="tog-lava" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">💼 Lava</button>
+    <button onclick="toggleArea('realestate')" id="tog-realestate" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🏠 Real Estate</button>
+    <button onclick="toggleArea('personal')" id="tog-personal" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">👤 Personal</button>
   </div>
     <button class="search-btn" onclick="openSearch()" title="Search (⌘K)">&#128269; Search <span class="search-kbd">⌘K</span></button>
     <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
@@ -162,7 +165,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
 var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
 var items = [], projects = [], tables = [], allItems = [];
-var areaFilter = "all";
+var areaFilters = new Set(["all"]);
 var currentList = "today", currentBtn = document.getElementById("btn-today");
 var undoItem = null, undoTimer = null;
 var searchFocusIndex = -1;
@@ -406,17 +409,7 @@ document.addEventListener("keydown", function(e) {
 function updateCounts() {
   var today = new Date().toISOString().split("T")[0];
   var visible;
-  if (areaFilter === "all") {
-    visible = allItems.slice();
-  } else if (areaFilter === "lava") {
-    visible = allItems.filter(function(i){ return !i.is_personal && i.area !== "Real Estate" && i.area !== "Personal" && i.area !== "template"; });
-  } else if (areaFilter === "realestate") {
-    visible = allItems.filter(function(i){ return i.area === "Real Estate"; });
-  } else if (areaFilter === "personal") {
-    visible = allItems.filter(function(i){ return i.is_personal; });
-  } else {
-    visible = allItems.slice();
-  }
+  visible = applyAreaFilter(allItems);
   ["inbox","next","waiting","someday","reference"].forEach(function(l) {
     var el = document.getElementById("c-" + l);
     if (el) {
@@ -439,8 +432,31 @@ function updateCounts() {
   }).length;
 }
 
-function setArea(area) {
-  areaFilter = area;
+function applyAreaFilter(source) {
+  if (areaFilters.has("all")) return source.slice();
+  return source.filter(function(i) {
+    if (areaFilters.has("goodles") && i.area === "Goodles") return true;
+    if (areaFilters.has("wlabs") && i.area === "W Labs") return true;
+    if (areaFilters.has("wild") && i.area === "Wild") return true;
+    if (areaFilters.has("lava") && i.area === "Lava") return true;
+    if (areaFilters.has("realestate") && i.area === "Real Estate") return true;
+    if (areaFilters.has("personal") && (i.is_personal || i.area === "Personal")) return true;
+    return false;
+  });
+}
+
+function toggleArea(area) {
+  if (area === "all") {
+    areaFilters = new Set(["all"]);
+  } else {
+    areaFilters.delete("all");
+    if (areaFilters.has(area)) {
+      areaFilters.delete(area);
+      if (areaFilters.size === 0) areaFilters = new Set(["all"]);
+    } else {
+      areaFilters.add(area);
+    }
+  }
   var btns = ["all","lava","realestate","personal"];
   btns.forEach(function(a) {
     var el = document.getElementById("tog-" + a);
@@ -488,7 +504,7 @@ function renderItem(item) {
 function renderList(list) {
   var main = document.getElementById("main");
   var today = new Date().toISOString().split("T")[0];
-  items = areaFilter === "all" ? allItems.slice() : areaFilter === "lava" ? allItems.filter(function(i){ return !i.is_personal && i.area !== "Real Estate" && i.area !== "Personal" && i.area !== "template"; }) : areaFilter === "realestate" ? allItems.filter(function(i){ return i.area === "Real Estate"; }) : allItems.filter(function(i){ return i.is_personal; });
+  items = applyAreaFilter(allItems);
 
   if (list === "today") {
     var allToday = items.filter(function(i){
