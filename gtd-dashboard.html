@@ -116,6 +116,15 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
     <button onclick="toggleArea('realestate')" id="tog-realestate" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">🏠 Real Estate</button>
     <button onclick="toggleArea('personal')" id="tog-personal" style="font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">👤 Personal</button>
   </div>
+    <div id="client-toggles" style="display:none;gap:4px;flex-wrap:wrap">
+      <span style="font-size:10px;color:#6b6456;align-self:center;letter-spacing:0.05em">CLIENT:</span>
+      <button onclick="toggleClient('all')" id="ctog-all" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #c94a2a;background:#2a1008;color:#c94a2a;cursor:pointer">All</button>
+      <button onclick="toggleClient('goodles')" id="ctog-goodles" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Goodles</button>
+      <button onclick="toggleClient('wlabs')" id="ctog-wlabs" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">W Labs</button>
+      <button onclick="toggleClient('wild')" id="ctog-wild" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Wild</button>
+      <button onclick="toggleClient('neilmed')" id="ctog-neilmed" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Neilmed</button>
+      <button onclick="toggleClient('javvy')" id="ctog-javvy" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Javvy</button>
+    </div>
     <button class="search-btn" onclick="openSearch()" title="Search (⌘K)">&#128269; Search <span class="search-kbd">⌘K</span></button>
     <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
   </div>
@@ -163,6 +172,10 @@ var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
 var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtem9wY2NtbmZjY2p2ZHJ6c3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjcxODksImV4cCI6MjA4ODc0MzE4OX0.pQR_ujvl4KJVSEZEUs1zHa741yT6X_cfp3X-Xi2s-ks";
 var items = [], projects = [], tables = [], allItems = [];
 var areaFilters = new Set(["all"]);
+var clientFilters = new Set(["all"]);
+var CLIENT_MAP = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Lava", javvy:"Lava" };
+var CLIENT_AREAS = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Lava", javvy:"Lava" };
+// We filter by area field for Goodles/W Labs/Wild, and by project name for Neilmed/Javvy
 var currentList = "today", currentBtn = document.getElementById("btn-today");
 var undoItem = null, undoTimer = null;
 var searchFocusIndex = -1;
@@ -429,19 +442,68 @@ function updateCounts() {
   }).length;
 }
 
+function matchesClientFilter(i) {
+  if (clientFilters.has("all")) return true;
+  if (clientFilters.has("goodles") && i.area === "Goodles") return true;
+  if (clientFilters.has("wlabs") && i.area === "W Labs") return true;
+  if (clientFilters.has("wild") && i.area === "Wild") return true;
+  if (clientFilters.has("neilmed") && (i.area === "Lava" || (i.project && i.project.toLowerCase().includes("neilmed")))) return true;
+  if (clientFilters.has("javvy") && (i.project && i.project.toLowerCase().includes("javvy"))) return true;
+  return false;
+}
+
 function applyAreaFilter(source) {
-  if (areaFilters.has("all")) return source.slice();
+  if (areaFilters.has("all")) {
+    return clientFilters.has("all") ? source.slice() : source.filter(matchesClientFilter);
+  }
   return source.filter(function(i) {
-    if (areaFilters.has("lava") && !i.is_personal && i.area !== "Real Estate" && i.area !== "Personal" && i.area !== "template") return true;
-    if (areaFilters.has("realestate") && i.area === "Real Estate") return true;
-    if (areaFilters.has("personal") && (i.is_personal || i.area === "Personal")) return true;
-    return false;
+    var areaMatch = false;
+    if (areaFilters.has("lava") && !i.is_personal && i.area !== "Real Estate" && i.area !== "Personal" && i.area !== "template") areaMatch = true;
+    if (areaFilters.has("realestate") && i.area === "Real Estate") areaMatch = true;
+    if (areaFilters.has("personal") && (i.is_personal || i.area === "Personal")) areaMatch = true;
+    if (!areaMatch) return false;
+    return matchesClientFilter(i);
   });
+}
+
+function updateClientToggleVisibility() {
+  var showClients = areaFilters.has("all") || areaFilters.has("lava");
+  document.getElementById("client-toggles").style.display = showClients ? "flex" : "none";
+}
+
+function updateClientButtons() {
+  ["all","goodles","wlabs","wild","neilmed","javvy"].forEach(function(id) {
+    var el = document.getElementById("ctog-" + id);
+    if (!el) return;
+    if (clientFilters.has(id)) {
+      el.style.borderColor="#c94a2a"; el.style.background="#2a1008"; el.style.color="#c94a2a";
+    } else {
+      el.style.borderColor="#2a2820"; el.style.background="transparent"; el.style.color="#6b6456";
+    }
+  });
+}
+
+function toggleClient(client) {
+  if (client === "all") {
+    clientFilters = new Set(["all"]);
+  } else {
+    clientFilters.delete("all");
+    if (clientFilters.has(client)) {
+      clientFilters.delete(client);
+      if (clientFilters.size === 0) clientFilters = new Set(["all"]);
+    } else {
+      clientFilters.add(client);
+    }
+  }
+  updateClientButtons();
+  updateCounts();
+  renderList(currentList);
 }
 
 function toggleArea(area) {
   if (area === "all") {
     areaFilters = new Set(["all"]);
+    clientFilters = new Set(["all"]);
   } else {
     areaFilters.delete("all");
     if (areaFilters.has(area)) {
@@ -450,7 +512,11 @@ function toggleArea(area) {
     } else {
       areaFilters.add(area);
     }
+    // Reset client filter when changing area
+    clientFilters = new Set(["all"]);
   }
+  updateClientToggleVisibility();
+  updateClientButtons();
   var btns = ["all","lava","realestate","personal"];
   btns.forEach(function(a) {
     var el = document.getElementById("tog-" + a);
