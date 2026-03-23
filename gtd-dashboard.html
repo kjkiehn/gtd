@@ -455,7 +455,7 @@ function toggleArea(area) {
   btns.forEach(function(a) {
     var el = document.getElementById("tog-" + a);
     if (!el) return;
-    if (a === area) {
+    if (areaFilters.has(a)) {
       el.style.borderColor = "#c94a2a"; el.style.background = "#2a1008"; el.style.color = "#c94a2a";
     } else {
       el.style.borderColor = "#2a2820"; el.style.background = "transparent"; el.style.color = "#6b6456";
