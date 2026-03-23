@@ -571,14 +571,31 @@ function renderList(list) {
       if (i.list !== "next" && i.list !== "waiting") return false;
       return i.due_date && i.due_date <= today;
     });
-    // Build unique area and project options
-    var todayAreas = ["all"].concat([...new Set(allToday.filter(function(i){ return i.area; }).map(function(i){ return i.area; }))].sort());
+    // Build unique project options
     var todayProjects = ["all"].concat([...new Set(allToday.filter(function(i){ return i.project; }).map(function(i){ return i.project; }))].sort());
-    var tf_area = window._todayAreaFilter || "all";
+    var tf_client = window._todayClientFilter || "all";
     var tf_proj = window._todayProjFilter || "all";
+    // Client options — fixed list matching top-level buttons
+    var clientOptions = [
+      {value:"all", label:"All Clients"},
+      {value:"goodles", label:"Goodles"},
+      {value:"wlabs", label:"W Labs"},
+      {value:"wild", label:"Wild"},
+      {value:"neilmed", label:"Neilmed"},
+      {value:"javvy", label:"Javvy"},
+    ];
+    function matchesTodayClient(i, c) {
+      if (c === "all") return true;
+      if (c === "goodles") return i.area === "Goodles";
+      if (c === "wlabs") return i.area === "W Labs";
+      if (c === "wild") return i.area === "Wild";
+      if (c === "neilmed") return i.area === "Lava" && !(i.project && i.project.toLowerCase().includes("javvy"));
+      if (c === "javvy") return i.project && i.project.toLowerCase().includes("javvy");
+      return true;
+    }
     // Apply filters
     var filtered = allToday.filter(function(i){
-      if (tf_area !== "all" && i.area !== tf_area) return false;
+      if (!matchesTodayClient(i, tf_client)) return false;
       if (tf_proj !== "all" && i.project !== tf_proj) return false;
       return true;
     });
@@ -587,8 +604,8 @@ function renderList(list) {
     var h = "<div class='list-header'><h2>&#9728; Today</h2><span class='count'>" + filtered.length + " items</span></div>";
     // Filter bar
     h += "<div class='today-filter-bar'>";
-    h += "<label>Client:</label><select onchange='window._todayAreaFilter=this.value;window._renderToday()'>";
-    todayAreas.forEach(function(a){ h += "<option value='" + esc(a) + "'" + (a===tf_area?" selected":"") + ">" + esc(a==="all"?"All Clients":a) + "</option>"; });
+    h += "<label>Client:</label><select onchange='window._todayClientFilter=this.value;window._renderToday()'>";
+    clientOptions.forEach(function(o){ h += "<option value='" + esc(o.value) + "'" + (o.value===tf_client?" selected":"") + ">" + esc(o.label) + "</option>"; });
     h += "</select>";
     h += "<label style='margin-left:8px'>Project:</label><select onchange='window._todayProjFilter=this.value;window._renderToday()'>";
     todayProjects.forEach(function(p){ h += "<option value='" + esc(p) + "'" + (p===tf_proj?" selected":"") + ">" + esc(p==="all"?"All Projects":p) + "</option>"; });
