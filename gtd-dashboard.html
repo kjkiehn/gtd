@@ -124,6 +124,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
       <button onclick="toggleClient('wild')" id="ctog-wild" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Wild</button>
       <button onclick="toggleClient('neilmed')" id="ctog-neilmed" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Neilmed</button>
       <button onclick="toggleClient('javvy')" id="ctog-javvy" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Javvy</button>
+      <button onclick="toggleClient('justingredients')" id="ctog-justingredients" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Just Ingredients</button>
     </div>
     <button class="search-btn" onclick="openSearch()" title="Search (⌘K)">&#128269; Search <span class="search-kbd">⌘K</span></button>
     <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
@@ -449,6 +450,7 @@ function matchesClientFilter(i) {
   if (clientFilters.has("wild") && i.area === "Wild") return true;
   if (clientFilters.has("neilmed") && (i.area === "Lava" || (i.project && i.project.toLowerCase().includes("neilmed")))) return true;
   if (clientFilters.has("javvy") && (i.project && i.project.toLowerCase().includes("javvy"))) return true;
+  if (clientFilters.has("justingredients") && (i.project && i.project.toLowerCase().includes("just ingredients"))) return true;
   return false;
 }
 
@@ -472,7 +474,7 @@ function updateClientToggleVisibility() {
 }
 
 function updateClientButtons() {
-  ["all","goodles","wlabs","wild","neilmed","javvy"].forEach(function(id) {
+  ["all","goodles","wlabs","wild","neilmed","javvy","justingredients"].forEach(function(id) {
     var el = document.getElementById("ctog-" + id);
     if (!el) return;
     if (clientFilters.has(id)) {
@@ -583,14 +585,16 @@ function renderList(list) {
       {value:"wild", label:"Wild"},
       {value:"neilmed", label:"Neilmed"},
       {value:"javvy", label:"Javvy"},
+      {value:"justingredients", label:"Just Ingredients"},
     ];
     function matchesTodayClient(i, c) {
       if (c === "all") return true;
       if (c === "goodles") return i.area === "Goodles";
       if (c === "wlabs") return i.area === "W Labs";
       if (c === "wild") return i.area === "Wild";
-      if (c === "neilmed") return i.area === "Lava" && !(i.project && i.project.toLowerCase().includes("javvy"));
+      if (c === "neilmed") return i.area === "Lava" && !(i.project && i.project.toLowerCase().includes("javvy")) && !(i.project && i.project.toLowerCase().includes("just ingredients"));
       if (c === "javvy") return i.project && i.project.toLowerCase().includes("javvy");
+      if (c === "justingredients") return i.project && i.project.toLowerCase().includes("just ingredients");
       return true;
     }
     // Apply filters
