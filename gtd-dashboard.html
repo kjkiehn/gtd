@@ -442,6 +442,11 @@ function updateCounts() {
   if (schedEl) schedEl.textContent = visible.filter(function(i){
     return i.list === "next" && i.due_date && i.due_date > today;
   }).length;
+  // Transactions count
+  fetch(SBU + "/rest/v1/gtd_transactions?select=id&status=neq.closed", { headers: { apikey: SBK, Authorization: "Bearer " + SBK } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ var el = document.getElementById("c-transactions"); if(el) el.textContent = Array.isArray(d) ? d.length : 0; })
+    .catch(function(){});
 }
 
 function matchesClientFilter(i) {
@@ -1144,9 +1149,9 @@ window._renderToday = function() { renderList('today'); };
 function renderTransactions() {
   var main = document.getElementById("main");
   main.innerHTML = "<div class='list-header'><h2>&#127968; Transactions</h2></div><div id='tx-body'><div class='empty'>Loading...</div></div>";
-  var SBU2 = SBU, h2 = h;
+  var txHeaders = { apikey: SBK, Authorization: "Bearer " + SBK };
 
-  fetch(SBU2 + "/rest/v1/gtd_transactions?order=closing_date.asc", { headers: h2 })
+  fetch(SBU + "/rest/v1/gtd_transactions?order=closing_date.asc", { headers: txHeaders })
     .then(function(r){ return r.json(); })
     .then(function(txns) {
       if (!txns || !txns.length) {
@@ -1228,9 +1233,10 @@ function renderTransactions() {
 }
 
 function updateTxStatus(id, status) {
+  var txHeaders = { apikey: SBK, Authorization: "Bearer " + SBK };
   fetch(SBU + "/rest/v1/gtd_transactions?id=eq." + id, {
     method: "PATCH",
-    headers: Object.assign({}, h, { "Content-Type": "application/json", "Prefer": "return=minimal" }),
+    headers: Object.assign({}, txHeaders, { "Content-Type": "application/json", "Prefer": "return=minimal" }),
     body: JSON.stringify({ status: status, updated_at: new Date().toISOString() })
   }).then(function() {
     renderTransactions();
