@@ -1215,11 +1215,11 @@ function renderTransactions() {
         html += "<div style='display:flex;gap:6px;flex-wrap:wrap'>";
         milestones.forEach(function(m) {
           if (m !== tx.status && m !== "closed") {
-            html += "<button onclick="updateTxStatus('" + tx.id + "','" + m + "')" style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer'>→ " + (statuses[m]||{label:m}).label + "</button>";
+            html += "<button onclick=\"updateTxStatus('" + tx.id + "','" + m + "')\" style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer'>→ " + (statuses[m]||{label:m}).label + "</button>";
           }
         });
         if (tx.status !== "closed") {
-          html += "<button onclick="updateTxStatus('" + tx.id + "','closed')" style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #27ae6055;background:#27ae6011;color:#27ae60;cursor:pointer'>✓ Mark Closed</button>";
+          html += "<button onclick=\"updateTxStatus('" + tx.id + "','closed')\" style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #27ae6055;background:#27ae6011;color:#27ae60;cursor:pointer'>✓ Mark Closed</button>";
         }
         html += "</div>";
         html += "</div>";
