@@ -1261,11 +1261,11 @@ function renderTransactions() {
         });
         html += "</div>";
 
-        // Key dates
-        html += "<div style='display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px'>";
-        if (tx.contract_date) html += "<div style='font-size:11px;color:#6b6456'>Contract: <span style='color:#9a8e7e'>" + tx.contract_date + "</span></div>";
-        if (tx.inspection_deadline) html += "<div style='font-size:11px;color:#6b6456'>Inspection Deadline: <span style='color:#9a8e7e'>" + tx.inspection_deadline + "</span></div>";
-        if (tx.closing_date) html += "<div style='font-size:11px;color:#6b6456'>Closing: <span style='color:" + urgency + ";font-weight:bold'>" + tx.closing_date + "</span></div>";
+        // Key dates — inline editable
+        html += "<div style='display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;align-items:center'>";
+        html += "<div style='display:flex;align-items:center;gap:6px'><span style='font-size:11px;color:#6b6456'>Contract:</span><input type='date' value='" + (tx.contract_date||"") + "' onchange=\"updateTxDate('" + tx.id + "','contract_date',this.value)\" style='background:#1a1814;border:1px solid #2a2820;border-radius:4px;color:#9a8e7e;font-size:11px;padding:2px 6px;cursor:pointer'></div>";
+        html += "<div style='display:flex;align-items:center;gap:6px'><span style='font-size:11px;color:#6b6456'>Closing:</span><input type='date' value='" + (tx.closing_date||"") + "' onchange=\"updateTxDate('" + tx.id + "','closing_date',this.value)\" style='background:#1a1814;border:1px solid " + urgency + "44;border-radius:4px;color:" + urgency + ";font-size:11px;padding:2px 6px;font-weight:bold;cursor:pointer'></div>";
+        if (tx.inspection_deadline) html += "<div style='display:flex;align-items:center;gap:6px'><span style='font-size:11px;color:#6b6456'>Inspection Deadline:</span><span style='font-size:11px;color:#9a8e7e'>" + tx.inspection_deadline + "</span></div>";
         if (tx.accepted_price) html += "<div style='font-size:11px;color:#6b6456'>Price: <span style='color:#9a8e7e'>$" + tx.accepted_price.toLocaleString() + "</span></div>";
         html += "</div>";
 
@@ -1288,6 +1288,17 @@ function renderTransactions() {
     .catch(function(e) {
       document.getElementById("tx-body").innerHTML = "<div class='empty'>Error loading transactions.</div>";
     });
+}
+
+function updateTxDate(id, field, value) {
+  var txHeaders = { apikey: SBK, Authorization: "Bearer " + SBK };
+  var payload = { updated_at: new Date().toISOString() };
+  payload[field] = value || null;
+  fetch(SBU + "/rest/v1/gtd_transactions?id=eq." + id, {
+    method: "PATCH",
+    headers: Object.assign({}, txHeaders, { "Content-Type": "application/json", "Prefer": "return=minimal" }),
+    body: JSON.stringify(payload)
+  }).then(function() { renderTransactions(); });
 }
 
 function updateTxStatus(id, status) {
