@@ -1148,8 +1148,37 @@ window._renderToday = function() { renderList('today'); };
 
 function renderTransactions() {
   var main = document.getElementById("main");
-  main.innerHTML = "<div class='list-header'><h2>&#127968; Transactions</h2></div><div id='tx-filters' style='display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center'></div><div id='tx-body'><div class='empty'>Loading...</div></div>";
+  main.innerHTML = "<div class='list-header'><h2>&#127968; Transactions</h2></div><div id='tx-filters' style='display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center'></div><div id='tx-body'><div class='empty'>Loading...</div></div><div id='tx-templates'></div>";
   var txHeaders = { apikey: SBK, Authorization: "Bearer " + SBK };
+
+  // Load email templates alongside transactions
+  fetch(SBU + "/rest/v1/gtd_items?select=title,notes&title=ilike.EMAIL+TEMPLATE*&status=eq.active&order=title.asc", { headers: txHeaders })
+    .then(function(r){ return r.json(); })
+    .then(function(templates) {
+      if (!templates || !templates.length) return;
+      var tOpen = window._txTemplatesOpen || false;
+      var th = "<div style='margin-top:24px;border-top:1px solid #2a2820;padding-top:16px'>";
+      th += "<div style='display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:" + (tOpen?"12":"0") + "px' onclick=\"window._txTemplatesOpen=!window._txTemplatesOpen;renderTransactions()\">";
+      th += "<h3 style='font-size:13px;color:#9a8e7e;letter-spacing:0.08em;text-transform:uppercase;margin:0'>&#9993; Email Templates</h3>";
+      th += "<span style='font-size:11px;color:#6b6456'>" + (tOpen ? "▲ collapse" : "▼ expand") + "</span>";
+      th += "</div>";
+      if (tOpen) {
+        templates.forEach(function(t) {
+          var label = t.title.replace("EMAIL TEMPLATE — ", "");
+          var tid = "tmpl-" + label.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+          th += "<div style='background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:12px 14px;margin-bottom:8px'>";
+          th += "<div style='display:flex;justify-content:space-between;align-items:center'>";
+          th += "<span style='font-size:12px;color:#c9a96e;font-weight:bold'>" + esc(label) + "</span>";
+          th += "<button onclick=\"var el=document.getElementById('" + tid + "');el.style.display=el.style.display==='none'?'block':'none'\" style='font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer'>View / Copy</button>";
+          th += "</div>";
+          th += "<pre id='" + tid + "' style='display:none;margin:10px 0 4px;white-space:pre-wrap;font-family:Arial,sans-serif;font-size:11px;color:#9a8e7e;background:#0f0e0c;border-radius:4px;padding:10px;cursor:text;user-select:all'>" + esc(t.notes) + "</pre>";
+          th += "</div>";
+        });
+      }
+      th += "</div>";
+      document.getElementById("tx-templates").innerHTML = th;
+    })
+    .catch(function(){});
 
   fetch(SBU + "/rest/v1/gtd_transactions?order=closing_date.asc", { headers: txHeaders })
     .then(function(r){ return r.json(); })
