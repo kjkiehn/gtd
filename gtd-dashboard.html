@@ -1148,7 +1148,7 @@ window._renderToday = function() { renderList('today'); };
 
 function renderTransactions() {
   var main = document.getElementById("main");
-  main.innerHTML = "<div class='list-header'><h2>&#127968; Transactions</h2></div><div id='tx-body'><div class='empty'>Loading...</div></div>";
+  main.innerHTML = "<div class='list-header'><h2>&#127968; Transactions</h2></div><div id='tx-filters' style='display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center'></div><div id='tx-body'><div class='empty'>Loading...</div></div>";
   var txHeaders = { apikey: SBK, Authorization: "Bearer " + SBK };
 
   fetch(SBU + "/rest/v1/gtd_transactions?order=closing_date.asc", { headers: txHeaders })
@@ -1156,8 +1156,65 @@ function renderTransactions() {
     .then(function(txns) {
       if (!txns || !txns.length) {
         document.getElementById("tx-body").innerHTML = "<div class='empty'>No active transactions.</div>";
+        document.getElementById("tx-filters").innerHTML = "";
         return;
       }
+
+      // Build filter UI
+      var tf = window._txFilter || "all";
+      var filterHtml = "<span style='font-size:11px;color:#6b6456;letter-spacing:0.05em'>SHOW:</span>";
+      var filterOpts = [
+        { value: "all", label: "All" },
+        { value: "active", label: "Active" },
+        { value: "closed", label: "Closed" },
+      ];
+      filterOpts.forEach(function(o) {
+        var active = tf === o.value;
+        filterHtml += "<button onclick=\"window._txFilter='" + o.value + "';renderTransactions()\" style='font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid " + (active?"#c94a2a":"#2a2820") + ";background:" + (active?"#2a1008":"transparent") + ";color:" + (active?"#c94a2a":"#6b6456") + ";cursor:pointer'>" + o.label + "</button>";
+      });
+
+      // Date sort toggle
+      var sortDir = window._txSort || "asc";
+      filterHtml += "<button onclick=\"window._txSort=window._txSort==='asc'?'desc':'asc';renderTransactions()\" style='font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer'>Closing Date " + (sortDir === "asc" ? "↑" : "↓") + "</button>";
+
+      // Contract date range filter
+      var contractFrom = window._txContractFrom || "";
+      var contractTo = window._txContractTo || "";
+      var closeFrom = window._txCloseFrom || "";
+      var closeTo = window._txCloseTo || "";
+
+      filterHtml += "<span style='font-size:11px;color:#6b6456;margin-left:8px'>Contract:</span>";
+      filterHtml += "<input type='date' value='" + contractFrom + "' onchange=\"window._txContractFrom=this.value;renderTransactions()\" style='background:#1a1814;border:1px solid #2a2820;border-radius:4px;color:#9a8e7e;font-size:11px;padding:2px 6px'>";
+      filterHtml += "<span style='font-size:11px;color:#6b6456'>–</span>";
+      filterHtml += "<input type='date' value='" + contractTo + "' onchange=\"window._txContractTo=this.value;renderTransactions()\" style='background:#1a1814;border:1px solid #2a2820;border-radius:4px;color:#9a8e7e;font-size:11px;padding:2px 6px'>";
+
+      filterHtml += "<span style='font-size:11px;color:#6b6456;margin-left:8px'>Closing:</span>";
+      filterHtml += "<input type='date' value='" + closeFrom + "' onchange=\"window._txCloseFrom=this.value;renderTransactions()\" style='background:#1a1814;border:1px solid #2a2820;border-radius:4px;color:#9a8e7e;font-size:11px;padding:2px 6px'>";
+      filterHtml += "<span style='font-size:11px;color:#6b6456'>–</span>";
+      filterHtml += "<input type='date' value='" + closeTo + "' onchange=\"window._txCloseTo=this.value;renderTransactions()\" style='background:#1a1814;border:1px solid #2a2820;border-radius:4px;color:#9a8e7e;font-size:11px;padding:2px 6px'>";
+
+      if (contractFrom || contractTo || closeFrom || closeTo) {
+        filterHtml += "<button onclick=\"window._txContractFrom='';window._txContractTo='';window._txCloseFrom='';window._txCloseTo='';renderTransactions()\" style='font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid #c94a2a44;background:transparent;color:#c94a2a;cursor:pointer'>✕ Clear</button>";
+      }
+      document.getElementById("tx-filters").innerHTML = filterHtml;
+
+      // Apply filters
+      var filtered = txns.filter(function(tx) {
+        if (tf === "active" && tx.status === "closed") return false;
+        if (tf === "closed" && tx.status !== "closed") return false;
+        if (contractFrom && tx.contract_date && tx.contract_date < contractFrom) return false;
+        if (contractTo && tx.contract_date && tx.contract_date > contractTo) return false;
+        if (closeFrom && tx.closing_date && tx.closing_date < closeFrom) return false;
+        if (closeTo && tx.closing_date && tx.closing_date > closeTo) return false;
+        return true;
+      });
+
+      // Sort
+      filtered.sort(function(a, b) {
+        var da = a.closing_date || "9999-99-99";
+        var db = b.closing_date || "9999-99-99";
+        return sortDir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+      });
       var statuses = {
         under_contract: { label: "Under Contract", color: "#c9a96e" },
         inspection: { label: "Inspection", color: "#5b9bd5" },
@@ -1170,7 +1227,8 @@ function renderTransactions() {
       var today = new Date().toISOString().split("T")[0];
 
       var html = "";
-      txns.forEach(function(tx) {
+      if (!filtered.length) { document.getElementById("tx-body").innerHTML = "<div class='empty'>No transactions match the selected filters.</div>"; return; }
+      filtered.forEach(function(tx) {
         var st = statuses[tx.status] || { label: tx.status, color: "#6b6456" };
         var daysToClose = tx.closing_date ? Math.ceil((new Date(tx.closing_date) - new Date(today)) / 86400000) : null;
         var urgency = daysToClose !== null ? (daysToClose <= 7 ? "#c94a2a" : daysToClose <= 14 ? "#c9a96e" : "#27ae60") : "#6b6456";
