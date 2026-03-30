@@ -899,8 +899,42 @@ async function completeItem(e, id) {
     headers: h,
     body: JSON.stringify({ status: "completed" })
   });
+
+  // Auto-generate next occurrence for recurring tasks
+  if (item.recurrence && item.due_date) {
+    var nextDate = getNextRecurrenceDate(item.recurrence, item.recurrence_day, item.due_date);
+    if (nextDate) {
+      var newItem = {
+        title: item.title,
+        list: item.list,
+        status: "active",
+        area: item.area,
+        project: item.project,
+        context: item.context,
+        notes: item.notes,
+        energy: item.energy,
+        recurrence: item.recurrence,
+        recurrence_day: item.recurrence_day,
+        due_date: nextDate
+      };
+      fetch(SBU + "/rest/v1/gtd_items", {
+        method: "POST",
+        headers: Object.assign({}, h, { Prefer: "return=representation" }),
+        body: JSON.stringify(newItem)
+      }).then(function(r){ return r.json(); })
+        .then(function(d) {
+          if (d && d[0]) {
+            allItems.unshift(d[0]);
+            updateCounts();
+            renderList(currentList);
+          }
+        });
+    }
+  }
+
   // Show undo toast — undo will restore in UI and revert in Supabase
-  document.getElementById("toast-msg").textContent = "\u201c" + item.title + "\u201d completed";
+  var recurMsg = (item.recurrence && item.due_date) ? " — next due " + getNextRecurrenceDate(item.recurrence, item.recurrence_day, item.due_date) : "";
+  document.getElementById("toast-msg").textContent = "\u201c" + item.title + "\u201d completed" + recurMsg;
   var toast = document.getElementById("toast");
   toast.classList.add("show");
   if (undoTimer) clearTimeout(undoTimer);
@@ -908,6 +942,27 @@ async function completeItem(e, id) {
     toast.classList.remove("show");
     undoItem = null;
   }, 5000);
+}
+
+function getNextRecurrenceDate(recurrence, recurrence_day, current_due) {
+  var d = new Date(current_due + "T12:00:00");
+  if (recurrence === "daily") {
+    d.setDate(d.getDate() + 1);
+  } else if (recurrence === "weekly") {
+    d.setDate(d.getDate() + 7);
+  } else if (recurrence === "monthly") {
+    if (recurrence_day === "first_monday") {
+      // First Monday of next month
+      d.setMonth(d.getMonth() + 1);
+      d.setDate(1);
+      while (d.getDay() !== 1) { d.setDate(d.getDate() + 1); }
+    } else {
+      d.setMonth(d.getMonth() + 1);
+    }
+  } else {
+    return null;
+  }
+  return d.toISOString().split("T")[0];
 }
 
 function undoComplete() {
