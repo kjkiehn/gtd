@@ -167,7 +167,9 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 
 <div class="toast" id="toast">
   <span id="toast-msg">Item completed</span>
-  <button class="toast-undo" onclick="undoComplete()">Undo</button>
+  <span id="toast-count" style="font-size:11px;color:#6b6456;display:none"></span>
+  <button class="toast-undo" onclick="undoLast()">Undo</button>
+  <button class="toast-undo" onclick="dismissToast()" style="border-color:#6b6456;color:#6b6456">Dismiss</button>
 </div>
 <script>
 var SBU = "https://vmzopccmnfccjvdrzsxe.supabase.co";
@@ -180,6 +182,9 @@ var CLIENT_AREAS = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"La
 // We filter by area field for Goodles/W Labs/Wild, and by project name for Neilmed/Javvy
 var currentList = "today", currentBtn = document.getElementById("btn-today");
 var undoItem = null, undoTimer = null;
+// Undo stack — stores {type, id, prev, msg} for every mutating action
+var undoStack = [];
+var undoStackTimer = null;
 var searchFocusIndex = -1;
 var searchDebounce = null;
 
@@ -411,6 +416,10 @@ document.addEventListener("keydown", function(e) {
   if ((e.metaKey || e.ctrlKey) && e.key === "k") {
     e.preventDefault();
     openSearch();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+    e.preventDefault();
+    if (undoStack.length) undoLast();
   }
   if (e.key === "Escape" && document.getElementById("search-overlay").classList.contains("open")) {
     closeSearch();
@@ -884,9 +893,10 @@ function renderList(list) {
 
 async function completeItem(e, id) {
   e.stopPropagation();
-  var item = items.find(function(i){ return i.id === id; });
+  var item = allItems.find(function(i){ return i.id === id; });
   if (!item) return;
-  undoItem = item;
+  // Push to undo stack with full snapshot
+  undoStack.push({ type: "complete", id: id, prev: JSON.parse(JSON.stringify(item)), msg: "\u201c" + item.title + "\u201d completed" });
   // Remove from UI immediately
   allItems = allItems.filter(function(i){ return i.id !== id; });
   items = items.filter(function(i){ return i.id !== id; });
@@ -932,16 +942,9 @@ async function completeItem(e, id) {
     }
   }
 
-  // Show undo toast — undo will restore in UI and revert in Supabase
-  var recurMsg = (item.recurrence && item.due_date) ? " — next due " + getNextRecurrenceDate(item.recurrence, item.recurrence_day, item.due_date) : "";
-  document.getElementById("toast-msg").textContent = "\u201c" + item.title + "\u201d completed" + recurMsg;
-  var toast = document.getElementById("toast");
-  toast.classList.add("show");
-  if (undoTimer) clearTimeout(undoTimer);
-  undoTimer = setTimeout(function() {
-    toast.classList.remove("show");
-    undoItem = null;
-  }, 5000);
+  // Show undo toast
+  var recurMsg = (item.recurrence && item.due_date) ? " \u2014 next due " + getNextRecurrenceDate(item.recurrence, item.recurrence_day, item.due_date) : "";
+  showUndoToast("\u201c" + item.title + "\u201d completed" + recurMsg);
 }
 
 function getNextRecurrenceDate(recurrence, recurrence_day, current_due) {
@@ -965,26 +968,89 @@ function getNextRecurrenceDate(recurrence, recurrence_day, current_due) {
   return d.toISOString().split("T")[0];
 }
 
-function undoComplete() {
-  if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
-  if (undoItem) {
-    var id = undoItem.id;
-    allItems.push(undoItem);
+function showUndoToast(msg) {
+  document.getElementById("toast-msg").textContent = msg;
+  var countEl = document.getElementById("toast-count");
+  if (undoStack.length > 1) {
+    countEl.textContent = "(" + undoStack.length + " undoable)";
+    countEl.style.display = "inline";
+  } else {
+    countEl.style.display = "none";
+  }
+  var toast = document.getElementById("toast");
+  toast.classList.add("show");
+  if (undoStackTimer) clearTimeout(undoStackTimer);
+  undoStackTimer = setTimeout(function() {
+    toast.classList.remove("show");
+    undoStack = [];
+  }, 8000);
+}
+
+function dismissToast() {
+  if (undoStackTimer) { clearTimeout(undoStackTimer); undoStackTimer = null; }
+  document.getElementById("toast").classList.remove("show");
+  undoStack = [];
+}
+
+function undoLast() {
+  if (!undoStack.length) return;
+  var action = undoStack.pop();
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+
+  if (action.type === "complete") {
+    // Restore item to active in local arrays and Supabase
+    allItems.push(action.prev);
     allItems.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
-    items.push(undoItem);
+    items.push(action.prev);
     items.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
-    undoItem = null;
-    updateCounts();
-    renderList(currentList);
-    // Revert in Supabase
-    var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json" };
-    fetch(SBU + "/rest/v1/gtd_items?id=eq." + id, {
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + action.id, {
       method: "PATCH", headers: h,
       body: JSON.stringify({ status: "active" })
     });
+  } else if (action.type === "move_list") {
+    // Revert list change
+    var idx = allItems.findIndex(function(i){ return i.id === action.id; });
+    if (idx !== -1) allItems[idx].list = action.prev.list;
+    var idx2 = items.findIndex(function(i){ return i.id === action.id; });
+    if (idx2 !== -1) items[idx2].list = action.prev.list;
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + action.id, {
+      method: "PATCH", headers: h,
+      body: JSON.stringify({ list: action.prev.list })
+    });
+  } else if (action.type === "change_area") {
+    var idx = allItems.findIndex(function(i){ return i.id === action.id; });
+    if (idx !== -1) allItems[idx].area = action.prev.area;
+    var idx2 = items.findIndex(function(i){ return i.id === action.id; });
+    if (idx2 !== -1) items[idx2].area = action.prev.area;
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + action.id, {
+      method: "PATCH", headers: h,
+      body: JSON.stringify({ area: action.prev.area })
+    });
+  } else if (action.type === "change_date") {
+    var idx = allItems.findIndex(function(i){ return i.id === action.id; });
+    if (idx !== -1) allItems[idx].due_date = action.prev.due_date;
+    var idx2 = items.findIndex(function(i){ return i.id === action.id; });
+    if (idx2 !== -1) items[idx2].due_date = action.prev.due_date;
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + action.id, {
+      method: "PATCH", headers: h,
+      body: JSON.stringify({ due_date: action.prev.due_date })
+    });
   }
-  document.getElementById("toast").classList.remove("show");
+
+  updateCounts();
+  renderList(currentList);
+
+  // Show next item in stack or hide toast
+  if (undoStack.length) {
+    showUndoToast("Undone. " + undoStack.length + " more action" + (undoStack.length > 1 ? "s" : "") + " to undo.");
+  } else {
+    if (undoStackTimer) { clearTimeout(undoStackTimer); undoStackTimer = null; }
+    document.getElementById("toast").classList.remove("show");
+  }
 }
+
+// Keep legacy function name for any leftover references
+function undoComplete() { undoLast(); }
 
 async function restoreItem(id) {
   var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
@@ -1074,6 +1140,10 @@ function closeDatePicker() {
 async function saveDatePicker(itemId) {
   var val = document.getElementById("dp-input").value;
   closeDatePicker();
+  var item = allItems.find(function(i){ return i.id === itemId; });
+  if (item) {
+    undoStack.push({ type: "change_date", id: itemId, prev: { due_date: item.due_date || null }, msg: "Date changed to " + (val || "none") });
+  }
   var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
   var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
     method: "PATCH", headers: h,
@@ -1087,11 +1157,16 @@ async function saveDatePicker(itemId) {
     if (idx2 !== -1) items[idx2].due_date = data[0].due_date;
     updateCounts();
     renderList(currentList);
+    showUndoToast("Date \u2192 " + (val || "cleared"));
   }
 }
 
 async function clearDatePicker(itemId) {
   closeDatePicker();
+  var item = allItems.find(function(i){ return i.id === itemId; });
+  if (item) {
+    undoStack.push({ type: "change_date", id: itemId, prev: { due_date: item.due_date || null }, msg: "Date cleared" });
+  }
   var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
   var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
     method: "PATCH", headers: h,
@@ -1105,6 +1180,7 @@ async function clearDatePicker(itemId) {
     if (idx2 !== -1) items[idx2].due_date = null;
     updateCounts();
     renderList(currentList);
+    showUndoToast("Date cleared");
   }
 }
 
@@ -1140,6 +1216,10 @@ function closeAreaPickerOutside(e) {
 
 async function saveArea(itemId, area) {
   if (activeAreaPicker) { activeAreaPicker.remove(); activeAreaPicker = null; }
+  var item = allItems.find(function(i){ return i.id === itemId; });
+  if (item) {
+    undoStack.push({ type: "change_area", id: itemId, prev: { area: item.area }, msg: "Area changed to " + (area || "none") });
+  }
   var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
   var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
     method: "PATCH", headers: h,
@@ -1153,6 +1233,7 @@ async function saveArea(itemId, area) {
     if (idx2 !== -1) items[idx2].area = data[0].area;
     updateCounts();
     renderList(currentList);
+    showUndoToast("Area \u2192 " + (area || "cleared"));
   }
 }
 
@@ -1187,6 +1268,11 @@ function openLP(el) {
 
 async function moveToList(id, list) {
   if (_lp) { _lp.remove(); _lp = null; }
+  var item = allItems.find(function(i){ return i.id === id; });
+  if (item) {
+    var prevList = item.list;
+    undoStack.push({ type: "move_list", id: id, prev: { list: prevList }, msg: "\u201c" + item.title + "\u201d moved to " + list });
+  }
   var h = { apikey: SBK, Authorization: 'Bearer ' + SBK, 'Content-Type': 'application/json', Prefer: 'return=representation' };
   var res = await fetch(SBU + '/rest/v1/gtd_items?id=eq.' + id, { method: 'PATCH', headers: h, body: JSON.stringify({ list: list }) });
   var data = await res.json();
@@ -1196,6 +1282,7 @@ async function moveToList(id, list) {
     var idx2 = items.findIndex(function(i) { return i.id === id; });
     if (idx2 !== -1) items[idx2].list = data[0].list;
     updateCounts(); renderList(currentList);
+    showUndoToast("Moved to " + list);
   }
 }
 
@@ -1401,3 +1488,4 @@ loadData();
 </script>
 </body>
 </html>
+
