@@ -912,6 +912,28 @@ async function completeItem(e, id) {
     body: JSON.stringify({ status: "completed" })
   });
 
+  // Unblock items that were waiting on this one
+  fetch(SBU + "/rest/v1/gtd_items?blocked_by=eq." + id + "&status=eq.active", {
+    method: "PATCH",
+    headers: h,
+    body: JSON.stringify({ list: "next", blocked_by: null })
+  }).then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d && d.length) {
+        d.forEach(function(unblocked) {
+          var existing = allItems.find(function(i){ return i.id === unblocked.id; });
+          if (existing) {
+            existing.list = "next";
+            existing.blocked_by = null;
+          } else {
+            allItems.unshift(unblocked);
+          }
+        });
+        updateCounts();
+        renderList(currentList);
+      }
+    });
+
   // Auto-generate next occurrence for recurring tasks
   if (item.recurrence && item.due_date) {
     var nextDate = getNextRecurrenceDate(item.recurrence, item.recurrence_day, item.due_date);
