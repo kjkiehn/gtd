@@ -605,12 +605,13 @@ function renderList(list) {
     ];
     function matchesTodayClient(i, c) {
       if (c === "all") return true;
-      if (c === "goodles") return i.area === "Goodles";
-      if (c === "wlabs") return i.area === "W Labs";
-      if (c === "wild") return i.area === "Wild";
-      if (c === "neilmed") return i.area === "Lava" && !(i.project && i.project.toLowerCase().includes("javvy")) && !(i.project && i.project.toLowerCase().includes("just ingredients"));
-      if (c === "javvy") return i.project && i.project.toLowerCase().includes("javvy");
-      if (c === "justingredients") return i.project && i.project.toLowerCase().includes("just ingredients");
+      var ctx = (i.context || "").toLowerCase();
+      if (c === "goodles") return ctx === "goodles";
+      if (c === "wlabs") return ctx === "w labs";
+      if (c === "wild") return ctx === "wild";
+      if (c === "neilmed") return ctx === "neilmed";
+      if (c === "javvy") return ctx === "javvy";
+      if (c === "justingredients") return ctx === "just ingredients";
       return true;
     }
     // Apply filters
