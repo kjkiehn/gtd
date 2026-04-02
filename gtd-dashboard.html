@@ -177,8 +177,8 @@ var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6
 var items = [], projects = [], tables = [], allItems = [];
 var areaFilters = new Set(["all"]);
 var clientFilters = new Set(["all"]);
-var CLIENT_MAP = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Lava", javvy:"Lava" };
-var CLIENT_AREAS = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Lava", javvy:"Lava" };
+var CLIENT_MAP = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Neilmed", javvy:"Javvy", justingredients:"Just Ingredients" };
+var CLIENT_AREAS = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Neilmed", javvy:"Javvy", justingredients:"Just Ingredients" };
 // We filter by area field for Goodles/W Labs/Wild, and by project name for Neilmed/Javvy
 var currentList = "today", currentBtn = document.getElementById("btn-today");
 var undoItem = null, undoTimer = null;
@@ -460,12 +460,13 @@ function updateCounts() {
 
 function matchesClientFilter(i) {
   if (clientFilters.has("all")) return true;
-  if (clientFilters.has("goodles") && i.area === "Goodles") return true;
-  if (clientFilters.has("wlabs") && i.area === "W Labs") return true;
-  if (clientFilters.has("wild") && i.area === "Wild") return true;
-  if (clientFilters.has("neilmed") && (i.area === "Lava" || (i.project && i.project.toLowerCase().includes("neilmed")))) return true;
-  if (clientFilters.has("javvy") && (i.project && i.project.toLowerCase().includes("javvy"))) return true;
-  if (clientFilters.has("justingredients") && (i.project && i.project.toLowerCase().includes("just ingredients"))) return true;
+  var ctx = (i.context || "").toLowerCase();
+  if (clientFilters.has("goodles") && ctx === "goodles") return true;
+  if (clientFilters.has("wlabs") && ctx === "w labs") return true;
+  if (clientFilters.has("wild") && ctx === "wild") return true;
+  if (clientFilters.has("neilmed") && ctx === "neilmed") return true;
+  if (clientFilters.has("javvy") && ctx === "javvy") return true;
+  if (clientFilters.has("justingredients") && ctx === "just ingredients") return true;
   return false;
 }
 
@@ -871,7 +872,7 @@ function renderList(list) {
       fh += "<button onclick='event.stopPropagation();window._contextFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
-    var clients = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.area; }).map(function(i){ return i.area; }))].sort());
+    var clients = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort());
     fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
     fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>CLIENT:</span>";
     clients.forEach(function(c){
@@ -881,7 +882,7 @@ function renderList(list) {
     fh += "</div>";
     if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
     if (contextFilter !== "all") filtered = filtered.filter(function(i){ return i.context === contextFilter; });
-    if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.area === clientFilter; });
+    if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.context === clientFilter; });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else {
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>";
