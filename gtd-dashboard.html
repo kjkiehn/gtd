@@ -142,6 +142,8 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
     <button class="nav-btn" onclick="showList(this,'reference')" id="btn-reference">&#128193; Reference <span class="badge" id="c-reference">0</span></button>
     <div class="divider"></div>
     <button class="nav-btn" onclick="showList(this,'projects')" id="btn-projects">&#128193; Projects <span class="badge" id="c-projects">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'orphan-actions')" id="btn-orphan-actions">&#128268; Orphan Actions <span class="badge" id="c-orphan-actions">0</span></button>
+    <button class="nav-btn" onclick="showList(this,'stalled-projects')" id="btn-stalled-projects">&#9888; Stalled Projects <span class="badge" id="c-stalled-projects">0</span></button>
     <button class="nav-btn" onclick="showList(this,'data')" id="btn-data">&#9776; Data <span class="badge" id="c-data">0</span></button>
     <button class="nav-btn" onclick="showList(this,'areas')" id="btn-areas">&#9632; Areas</button>
     <button class="nav-btn" onclick="showList(this,'archive')" id="btn-archive">&#128452; Archive</button>
@@ -464,6 +466,19 @@ function updateCounts() {
     }
   });
   document.getElementById("c-projects").textContent = projects.length;
+  // Orphan actions: active next/waiting items with no project
+  var orphanEl = document.getElementById("c-orphan-actions");
+  if (orphanEl) orphanEl.textContent = visible.filter(function(i){ return (i.list === "next" || i.list === "waiting") && !i.project; }).length;
+  // Stalled projects: projects with no active next/waiting/blocked items
+  var stalledEl = document.getElementById("c-stalled-projects");
+  if (stalledEl) {
+    var stalledCount = 0;
+    projects.forEach(function(p){
+      var hasActive = visible.some(function(i){ return i.project === p.name && (i.list === "next" || i.list === "waiting" || i.list === "blocked"); });
+      if (!hasActive) stalledCount++;
+    });
+    stalledEl.textContent = stalledCount;
+  }
   var dataEl = document.getElementById("c-data");
   if (dataEl) dataEl.textContent = tables.length;
   document.getElementById("c-today").textContent = visible.filter(function(i){
@@ -665,6 +680,58 @@ function renderList(list) {
         waitingItems.forEach(function(item){ h += renderItem(item); });
       }
     }
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "orphan-actions") {
+    var orphans = items.filter(function(i){ return (i.list === "next" || i.list === "waiting") && !i.project; });
+    var nextOrphans = orphans.filter(function(i){ return i.list === "next"; });
+    var waitingOrphans = orphans.filter(function(i){ return i.list === "waiting"; });
+    var h = "<div class='list-header'><h2>&#128268; Orphan Actions</h2><span class='count'>" + orphans.length + " items without a project</span></div>";
+    if (!orphans.length) { h += "<div class='empty'>All actions belong to a project. Nice!</div>"; main.innerHTML = h; return; }
+    if (nextOrphans.length) {
+      h += "<div style='font-size:11px;font-weight:700;color:#6b6456;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;padding:0 4px'>&#9889; Next Actions</div>";
+      nextOrphans.forEach(function(item){ h += renderItem(item); });
+      h += "<div style='margin-bottom:16px'></div>";
+    }
+    if (waitingOrphans.length) {
+      h += "<div style='font-size:11px;font-weight:700;color:#6b6456;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;padding:0 4px'>&#8987; Waiting For</div>";
+      waitingOrphans.forEach(function(item){ h += renderItem(item); });
+    }
+    main.innerHTML = h;
+    return;
+  }
+
+  if (list === "stalled-projects") {
+    var stalled = projects.filter(function(p){
+      return !items.some(function(i){ return i.project === p.name && (i.list === "next" || i.list === "waiting" || i.list === "blocked"); });
+    });
+    var h = "<div class='list-header'><h2>&#9888; Stalled Projects</h2><span class='count'>" + stalled.length + " projects with no active actions</span></div>";
+    if (!stalled.length) { h += "<div class='empty'>All projects have active next actions. You're on it!</div>"; main.innerHTML = h; return; }
+    stalled.forEach(function(p) {
+      var pItems = items.filter(function(i){ return i.project === p.name; });
+      var refItems = pItems.filter(function(i){ return i.list === "reference"; });
+      var completedItems = pItems.filter(function(i){ return i.status === "completed"; });
+      h += "<div class='item' onclick='this.classList.toggle(\"expanded\")'>";
+      h += "<div class='item-body'>";
+      h += "<div style='display:flex;justify-content:space-between;align-items:center'>";
+      h += "<span class='item-title' style='color:#c97060'>" + esc(p.name) + "</span>";
+      h += "<div style='display:flex;gap:6px;align-items:center'>";
+      if (p.area) h += "<span class='tag'>" + esc(p.area) + "</span>";
+      h += "<span class='tag' style='border-color:#4a2820;color:#c97060'>no active actions</span>";
+      h += "<span style='color:#3a3628;font-size:11px'>&#9654;</span></div></div>";
+      h += "<div class='item-details'>";
+      if (refItems.length) {
+        h += "<div style='font-size:11px;color:#6b6456;margin-bottom:4px'>&#128193; REFERENCE (" + refItems.length + ")</div>";
+        refItems.forEach(function(i){
+          h += "<div style='font-size:12px;color:#6b6456;padding:2px 0'>" + esc(i.title) + "</div>";
+        });
+      }
+      if (!pItems.length) h += "<div style='font-size:12px;color:#6b6456;font-style:italic'>No items at all — needs a next action or should be removed</div>";
+      else if (!refItems.length) h += "<div style='font-size:12px;color:#6b6456;font-style:italic'>Only completed items — needs a next action or is done</div>";
+      h += "</div></div></div>";
+    });
     main.innerHTML = h;
     return;
   }
