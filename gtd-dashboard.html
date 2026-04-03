@@ -882,23 +882,24 @@ function renderList(list) {
 
   if (list === "next") {
     var energies = ["all","high","medium","low"];
-    var contexts = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort());
     var fh = "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
     fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>ENERGY:</span>";
     energies.forEach(function(e){
       var active = energyFilter === e;
       fh += "<button onclick='event.stopPropagation();window._energyFilter=\"" + e + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#c94a2a":"#2a2820") + ";background:" + (active?"#2a1008":"transparent") + ";color:" + (active?"#c94a2a":"#6b6456") + ";cursor:pointer'>" + e + "</button>";
     });
+    var allContextValues = [...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort();
+    var contextOnly = ["all"].concat(allContextValues.filter(function(c){ return c.charAt(0) === "@"; }));
+    var clientOnly = ["all"].concat(allContextValues.filter(function(c){ return c.charAt(0) !== "@"; }));
     fh += "<span style='font-size:11px;color:#6b6456;margin-left:6px;margin-right:2px'>CONTEXT:</span>";
-    contexts.forEach(function(c){
+    contextOnly.forEach(function(c){
       var active = contextFilter.indexOf(c) !== -1;
       fh += "<button onclick='event.stopPropagation();window._toggleContext(\"" + c + "\");' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
-    var clients = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort());
     fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
     fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>CLIENT:</span>";
-    clients.forEach(function(c){
+    clientOnly.forEach(function(c){
       var active = clientFilter === c;
       fh += "<button onclick='event.stopPropagation();window._clientFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#7a9abf":"#2a2820") + ";background:" + (active?"#0a1525":"transparent") + ";color:" + (active?"#7a9abf":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
