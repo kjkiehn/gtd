@@ -177,6 +177,28 @@ var SBK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6
 var items = [], projects = [], tables = [], allItems = [];
 var areaFilters = new Set(["all"]);
 var clientFilters = new Set(["all"]);
+
+window._toggleContext = function(c) {
+  if (!window._contextFilter) window._contextFilter = ["all"];
+  var cf = window._contextFilter;
+  if (c === "all") {
+    window._contextFilter = ["all"];
+  } else {
+    // Remove "all" if selecting a specific context
+    var allIdx = cf.indexOf("all");
+    if (allIdx !== -1) cf.splice(allIdx, 1);
+    // Toggle the clicked context
+    var idx = cf.indexOf(c);
+    if (idx !== -1) {
+      cf.splice(idx, 1);
+    } else {
+      cf.push(c);
+    }
+    // If nothing selected, revert to "all"
+    if (cf.length === 0) window._contextFilter = ["all"];
+  }
+  renderList("next");
+};
 var CLIENT_MAP = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Neilmed", javvy:"Javvy", justingredients:"Just Ingredients" };
 var CLIENT_AREAS = { goodles:"Goodles", wlabs:"W Labs", wild:"Wild", neilmed:"Neilmed", javvy:"Javvy", justingredients:"Just Ingredients" };
 // We filter by area field for Goodles/W Labs/Wild, and by project name for Neilmed/Javvy
@@ -855,7 +877,7 @@ function renderList(list) {
     return true;
   });
   var energyFilter = window._energyFilter || "all";
-  var contextFilter = window._contextFilter || "all";
+  var contextFilter = window._contextFilter || ["all"];
   var clientFilter = window._clientFilter || "all";
 
   if (list === "next") {
@@ -869,8 +891,8 @@ function renderList(list) {
     });
     fh += "<span style='font-size:11px;color:#6b6456;margin-left:6px;margin-right:2px'>CONTEXT:</span>";
     contexts.forEach(function(c){
-      var active = contextFilter === c;
-      fh += "<button onclick='event.stopPropagation();window._contextFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
+      var active = contextFilter.indexOf(c) !== -1;
+      fh += "<button onclick='event.stopPropagation();window._toggleContext(\"" + c + "\");' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#6ab06a":"#2a2820") + ";background:" + (active?"#0a1a0a":"transparent") + ";color:" + (active?"#6ab06a":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
     var clients = ["all"].concat([...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort());
@@ -882,7 +904,7 @@ function renderList(list) {
     });
     fh += "</div>";
     if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
-    if (contextFilter !== "all") filtered = filtered.filter(function(i){ return i.context === contextFilter; });
+    if (contextFilter.indexOf("all") === -1 && contextFilter.length > 0) filtered = filtered.filter(function(i){ return contextFilter.indexOf(i.context) !== -1; });
     if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.context === clientFilter; });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else {
