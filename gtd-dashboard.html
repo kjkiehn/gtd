@@ -466,9 +466,15 @@ function updateCounts() {
     }
   });
   document.getElementById("c-projects").textContent = projects.length;
-  // Orphan actions: active next/waiting items with no project
+  // Orphan actions: active next/waiting items with no project (dedup recurring)
   var orphanEl = document.getElementById("c-orphan-actions");
-  if (orphanEl) orphanEl.textContent = visible.filter(function(i){ return (i.list === "next" || i.list === "waiting") && !i.project; }).length;
+  if (orphanEl) {
+    var orphanSeen = {};
+    var orphanList = visible.filter(function(i){ return (i.list === "next" || i.list === "waiting") && !i.project; })
+      .sort(function(a, b){ return (a.due_date || "9999") < (b.due_date || "9999") ? -1 : 1; })
+      .filter(function(i){ if (i.recurrence) { if (orphanSeen[i.title]) return false; orphanSeen[i.title] = true; } return true; });
+    orphanEl.textContent = orphanList.length;
+  }
   // Stalled projects: projects with no active next/waiting/blocked items
   var stalledEl = document.getElementById("c-stalled-projects");
   if (stalledEl) {
@@ -686,6 +692,15 @@ function renderList(list) {
 
   if (list === "orphan-actions") {
     var orphans = items.filter(function(i){ return (i.list === "next" || i.list === "waiting") && !i.project; });
+    // Deduplicate recurring tasks — only show the earliest instance per title
+    var seen = {};
+    orphans = orphans.sort(function(a, b){ return (a.due_date || "9999") < (b.due_date || "9999") ? -1 : 1; }).filter(function(i){
+      if (i.recurrence) {
+        if (seen[i.title]) return false;
+        seen[i.title] = true;
+      }
+      return true;
+    });
     var nextOrphans = orphans.filter(function(i){ return i.list === "next"; });
     var waitingOrphans = orphans.filter(function(i){ return i.list === "waiting"; });
     var h = "<div class='list-header'><h2>&#128268; Orphan Actions</h2><span class='count'>" + orphans.length + " items without a project</span></div>";
