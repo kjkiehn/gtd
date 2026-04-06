@@ -465,7 +465,7 @@ function updateCounts() {
       }
     }
   });
-  document.getElementById("c-projects").textContent = projects.length;
+  document.getElementById("c-projects").textContent = projects.filter(function(p){ return p.status === "active"; }).length;
   // Orphan actions: active next/waiting items with no project (dedup recurring)
   var orphanEl = document.getElementById("c-orphan-actions");
   if (orphanEl) {
@@ -480,6 +480,7 @@ function updateCounts() {
   if (stalledEl) {
     var stalledCount = 0;
     projects.forEach(function(p){
+      if (p.status !== "active") return;
       var hasActive = visible.some(function(i){ return i.project === p.name && (i.list === "next" || i.list === "waiting" || i.list === "blocked"); });
       if (!hasActive) stalledCount++;
     });
@@ -720,6 +721,7 @@ function renderList(list) {
 
   if (list === "stalled-projects") {
     var stalled = projects.filter(function(p){
+      if (p.status !== "active") return false;
       return !items.some(function(i){ return i.project === p.name && (i.list === "next" || i.list === "waiting" || i.list === "blocked"); });
     });
     var h = "<div class='list-header'><h2>&#9888; Stalled Projects</h2><span class='count'>" + stalled.length + " projects with no active actions</span></div>";
@@ -735,6 +737,8 @@ function renderList(list) {
       h += "<div style='display:flex;gap:6px;align-items:center'>";
       if (p.area) h += "<span class='tag'>" + esc(p.area) + "</span>";
       h += "<span class='tag' style='border-color:#4a2820;color:#c97060'>no active actions</span>";
+      h += "<button onclick='event.stopPropagation();completeProject(\"" + p.id + "\",\"" + esc(p.name).replace(/'/g,"&#39;") + "\")' style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #27ae6055;background:#27ae6011;color:#27ae60;cursor:pointer'>&#10003; Done</button>";
+      h += "<button onclick='event.stopPropagation();somedayProject(\"" + p.id + "\",\"" + esc(p.name).replace(/'/g,"&#39;") + "\")' style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #c9a96e44;background:#c9a96e11;color:#c9a96e;cursor:pointer'>&#127793; Someday</button>";
       h += "<span style='color:#3a3628;font-size:11px'>&#9654;</span></div></div>";
       h += "<div class='item-details'>";
       if (refItems.length) {
@@ -752,9 +756,10 @@ function renderList(list) {
   }
 
   if (list === "projects") {
-    var h = "<div class='list-header'><h2>&#128193; Projects</h2><span class='count'>" + projects.length + " items</span></div>";
-    if (!projects.length) { h += "<div class='empty'>No projects yet.</div>"; main.innerHTML = h; return; }
-    projects.forEach(function(p) {
+    var activeProjects = projects.filter(function(p){ return p.status === "active"; });
+    var h = "<div class='list-header'><h2>&#128193; Projects</h2><span class='count'>" + activeProjects.length + " active</span></div>";
+    if (!activeProjects.length) { h += "<div class='empty'>No active projects.</div>"; main.innerHTML = h; return; }
+    activeProjects.forEach(function(p) {
       var pItems = items.filter(function(i){ return i.project === p.name; });
       var nItems = pItems.filter(function(i){ return i.list === "next"; });
       var wItems = pItems.filter(function(i){ return i.list === "waiting"; });
@@ -765,6 +770,8 @@ function renderList(list) {
       h += "<div style='display:flex;gap:6px;align-items:center'>";
       if (p.area) h += "<span class='tag'>" + esc(p.area) + "</span>";
       h += "<span class='tag'>" + pItems.length + " action" + (pItems.length !== 1 ? "s" : "") + "</span>";
+      h += "<button onclick='event.stopPropagation();completeProject(\"" + p.id + "\",\"" + esc(p.name).replace(/'/g,"&#39;") + "\")' style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #27ae6055;background:#27ae6011;color:#27ae60;cursor:pointer'>&#10003; Done</button>";
+      h += "<button onclick='event.stopPropagation();somedayProject(\"" + p.id + "\",\"" + esc(p.name).replace(/'/g,"&#39;") + "\")' style='font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #c9a96e44;background:#c9a96e11;color:#c9a96e;cursor:pointer'>&#127793; Someday</button>";
       h += "<span style='color:#3a3628;font-size:11px'>&#9654;</span></div></div>";
       if (p.outcome) h += "<div style='margin-top:4px;font-size:12px;color:#9a9080;font-style:italic'>" + esc(p.outcome) + "</div>";
       h += "<div class='item-details'>";
@@ -1613,8 +1620,37 @@ function updateTxStatus(id, status) {
     if (el) el.textContent = parseInt(el.textContent||0);
   });
 }
+// ---- PROJECT ACTIONS ----
+async function completeProject(id, name) {
+  if (!confirm('Mark project "' + name + '" as completed?')) return;
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=minimal" };
+  await fetch(SBU + "/rest/v1/gtd_projects?id=eq." + id, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ status: "completed" })
+  });
+  projects = projects.filter(function(p){ return p.id !== id; });
+  updateCounts();
+  renderList(currentList);
+  showUndoToast("\u201c" + name + "\u201d project completed");
+}
+
+async function somedayProject(id, name) {
+  if (!confirm('Move project "' + name + '" to Someday/Maybe?')) return;
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=minimal" };
+  await fetch(SBU + "/rest/v1/gtd_projects?id=eq." + id, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ status: "someday" })
+  });
+  projects = projects.filter(function(p){ return p.id !== id; });
+  updateCounts();
+  renderList(currentList);
+  showUndoToast("\u201c" + name + "\u201d moved to Someday/Maybe");
+}
+// ---- END PROJECT ACTIONS ----
+
 loadData();
 </script>
 </body>
 </html>
+
 
