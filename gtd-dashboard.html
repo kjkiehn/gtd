@@ -637,9 +637,10 @@ function renderList(list) {
     var todayProjects = ["all"].concat([...new Set(allToday.filter(function(i){ return i.project; }).map(function(i){ return i.project; }))].sort());
     var tf_client = window._todayClientFilter || "all";
     var tf_proj = window._todayProjFilter || "all";
-    var tf_ctx = window._todayContextFilter || "all";
+    if (!window._todayContextFilters) window._todayContextFilters = new Set(["all"]);
+    var tf_ctxSet = window._todayContextFilters;
     // Build unique @context options from today items
-    var todayContexts = ["all"].concat([...new Set(allToday.filter(function(i){ return i.context && i.context.charAt(0) === "@"; }).map(function(i){ return i.context; }))].sort());
+    var todayContexts = [...new Set(allToday.filter(function(i){ return i.context && i.context.charAt(0) === "@"; }).map(function(i){ return i.context; }))].sort();
     // Client options — fixed list matching top-level buttons
     var clientOptions = [
       {value:"all", label:"All Clients"},
@@ -665,7 +666,7 @@ function renderList(list) {
     var filtered = allToday.filter(function(i){
       if (!matchesTodayClient(i, tf_client)) return false;
       if (tf_proj !== "all" && i.project !== tf_proj) return false;
-      if (tf_ctx !== "all" && (i.context || "") !== tf_ctx) return false;
+      if (!tf_ctxSet.has("all") && !tf_ctxSet.has(i.context || "")) return false;
       return true;
     });
     var nextItems = filtered.filter(function(i){ return i.list === "next"; });
@@ -679,9 +680,13 @@ function renderList(list) {
     h += "<label style='margin-left:8px'>Project:</label><select onchange='window._todayProjFilter=this.value;window._renderToday()'>";
     todayProjects.forEach(function(p){ h += "<option value='" + esc(p) + "'" + (p===tf_proj?" selected":"") + ">" + esc(p==="all"?"All Projects":p) + "</option>"; });
     h += "</select>";
-    h += "<label style='margin-left:8px'>Context:</label><select onchange='window._todayContextFilter=this.value;window._renderToday()'>";
-    todayContexts.forEach(function(c){ h += "<option value='" + esc(c) + "'" + (c===tf_ctx?" selected":"") + ">" + esc(c==="all"?"All Contexts":c) + "</option>"; });
-    h += "</select>";
+    h += "<label style='margin-left:8px'>Context:</label>";
+    var ctxAllActive = tf_ctxSet.has("all");
+    h += "<button onclick='window._toggleTodayCtx(\"all\")' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (ctxAllActive ? "#c94a2a" : "#2a2820") + ";background:" + (ctxAllActive ? "#2a1008" : "transparent") + ";color:" + (ctxAllActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer;margin-left:4px\">All</button>";
+    todayContexts.forEach(function(c){
+      var active = tf_ctxSet.has(c);
+      h += "<button onclick='window._toggleTodayCtx(\"" + esc(c) + "\")' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (active ? "#c94a2a" : "#2a2820") + ";background:" + (active ? "#2a1008" : "transparent") + ";color:" + (active ? "#c94a2a" : "#6b6456") + ";cursor:pointer\">" + esc(c) + "</button>";
+    });
     h += "</div>";
     if (!filtered.length) { h += "<div class='empty'>Nothing due today.</div>"; }
     else {
@@ -1430,6 +1435,18 @@ async function moveToList(id, list) {
 }
 
 window._renderToday = function() { renderList('today'); };
+window._toggleTodayCtx = function(c) {
+  if (!window._todayContextFilters) window._todayContextFilters = new Set(["all"]);
+  var s = window._todayContextFilters;
+  if (c === "all") {
+    window._todayContextFilters = new Set(["all"]);
+  } else {
+    s.delete("all");
+    if (s.has(c)) { s.delete(c); } else { s.add(c); }
+    if (s.size === 0) window._todayContextFilters = new Set(["all"]);
+  }
+  renderList("today");
+};
 
 function renderTransactions() {
   var main = document.getElementById("main");
