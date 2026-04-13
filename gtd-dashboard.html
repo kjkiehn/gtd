@@ -687,9 +687,39 @@ function renderList(list) {
       var active = tf_ctxSet.has(c);
       h += "<button onclick='window._toggleTodayCtx(\"" + esc(c) + "\")' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (active ? "#c94a2a" : "#2a2820") + ";background:" + (active ? "#2a1008" : "transparent") + ";color:" + (active ? "#c94a2a" : "#6b6456") + ";cursor:pointer\">" + esc(c) + "</button>";
     });
+    // Energy view toggle
+    if (!window._todayEnergyView) window._todayEnergyView = false;
+    var evActive = window._todayEnergyView;
+    h += "<label style='margin-left:12px'>View:</label>";
+    h += "<button onclick='window._todayEnergyView=false;window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (!evActive ? "#c94a2a" : "#2a2820") + ";background:" + (!evActive ? "#2a1008" : "transparent") + ";color:" + (!evActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer;margin-left:4px\">&#9889; List</button>";
+    h += "<button onclick='window._todayEnergyView=true;window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (evActive ? "#c94a2a" : "#2a2820") + ";background:" + (evActive ? "#2a1008" : "transparent") + ";color:" + (evActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer\">&#9889; Energy</button>";
     h += "</div>";
     if (!filtered.length) { h += "<div class='empty'>Nothing due today.</div>"; }
-    else {
+    else if (window._todayEnergyView) {
+      // Energy view — group by energy level
+      var energyGroups = [
+        { key: "high", label: "🔴 High Energy", color: "#c97060", items: [] },
+        { key: "medium", label: "🟡 Medium Energy", color: "#c9a96e", items: [] },
+        { key: "low", label: "🟢 Low Energy", color: "#4a9a7a", items: [] },
+        { key: "none", label: "⬜ No Energy Set", color: "#6b6456", items: [] }
+      ];
+      filtered.filter(function(i){ return i.list === "next"; }).forEach(function(i){
+        var e = (i.energy || "").toLowerCase();
+        if (e === "high") energyGroups[0].items.push(i);
+        else if (e === "medium" || e === "med") energyGroups[1].items.push(i);
+        else if (e === "low") energyGroups[2].items.push(i);
+        else energyGroups[3].items.push(i);
+      });
+      energyGroups.forEach(function(g){
+        if (!g.items.length) return;
+        h += "<div style='font-size:11px;color:" + g.color + ";letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;margin-top:12px'>" + g.label + " (" + g.items.length + ")</div>";
+        g.items.forEach(function(item){ h += renderItem(item); });
+      });
+      if (waitingItems.length) {
+        h += "<div style='font-size:11px;color:#6b6456;letter-spacing:0.1em;text-transform:uppercase;margin:16px 0 8px'>&#8987; Waiting For</div>";
+        waitingItems.forEach(function(item){ h += renderItem(item); });
+      }
+    } else {
       if (nextItems.length) {
         h += "<div style='font-size:11px;color:#6b6456;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px'>&#9889; Next Actions</div>";
         nextItems.forEach(function(item){ h += renderItem(item); });
@@ -1676,5 +1706,6 @@ loadData();
 </script>
 </body>
 </html>
+
 
 
