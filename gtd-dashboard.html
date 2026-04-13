@@ -372,6 +372,7 @@ function renderSearchResults(query, rItems, rProjects, rTables) {
 function handleSearchResult(el) {
   var list = el.getAttribute("data-list");
   var status = el.getAttribute("data-status");
+  var itemId = el.getAttribute("data-id");
   closeSearch();
   if (status === "completed") {
     var btn = document.getElementById("btn-archive");
@@ -380,6 +381,22 @@ function handleSearchResult(el) {
     var btnId = "btn-" + list;
     var btn = document.getElementById(btnId);
     if (btn) showList(btn, list);
+  }
+  if (itemId) {
+    setTimeout(function() {
+      var target = document.querySelector("[data-item-id='" + itemId + "']");
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("expanded");
+        target.style.transition = "box-shadow 0.3s, outline 0.3s";
+        target.style.outline = "2px solid #c9a96e";
+        target.style.boxShadow = "0 0 16px rgba(201,169,110,0.3)";
+        setTimeout(function() {
+          target.style.outline = "none";
+          target.style.boxShadow = "none";
+        }, 2500);
+      }
+    }, 300);
   }
 }
 
@@ -601,7 +618,7 @@ function showList(btn, list) {
 }
 
 function renderItem(item) {
-  var h = "<div class='item' onclick='this.classList.toggle(\"expanded\")'>";
+  var h = "<div class='item' data-item-id='" + item.id + "' onclick='this.classList.toggle(\"expanded\")'>";
   h += "<button class='circle' onclick='event.stopPropagation();completeItem(event,\"" + item.id + "\")' title='Complete'></button>";
   h += "<div class='item-body'><div class='item-title'>" + esc(item.title) + "</div>";
   h += "<div class='item-details'>";
