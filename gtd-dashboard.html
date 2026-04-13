@@ -1039,6 +1039,16 @@ function renderList(list) {
     if (contextFilter.indexOf("all") === -1 && contextFilter.length > 0) filtered = filtered.filter(function(i){ return contextFilter.indexOf(i.context) !== -1; });
     if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.context === clientFilter; });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
+  } else if (list === "waiting") {
+    if (window._waitingHideScheduled === undefined) window._waitingHideScheduled = false;
+    var hideScheduled = window._waitingHideScheduled;
+    if (hideScheduled) filtered = filtered.filter(function(i){ return !i.due_date; });
+    var fh = "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center'>";
+    fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>SHOW:</span>";
+    fh += "<button onclick='window._waitingHideScheduled=false;renderList(\"waiting\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (!hideScheduled?"#c94a2a":"#2a2820") + ";background:" + (!hideScheduled?"#2a1008":"transparent") + ";color:" + (!hideScheduled?"#c94a2a":"#6b6456") + ";cursor:pointer'>All</button>";
+    fh += "<button onclick='window._waitingHideScheduled=true;renderList(\"waiting\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (hideScheduled?"#c94a2a":"#2a2820") + ";background:" + (hideScheduled?"#2a1008":"transparent") + ";color:" + (hideScheduled?"#c94a2a":"#6b6456") + ";cursor:pointer'>Unscheduled only</button>";
+    fh += "</div>";
+    var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else {
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>";
   }
@@ -1706,6 +1716,7 @@ loadData();
 </script>
 </body>
 </html>
+
 
 
 
