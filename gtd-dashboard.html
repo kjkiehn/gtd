@@ -1043,7 +1043,7 @@ function renderList(list) {
   var clientFilter = window._clientFilter || "all";
 
   if (list === "next") {
-    var energies = ["all","high","medium","low"];
+    var energies = ["all","high","medium","low","none"];
     var fh = "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
     fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>ENERGY:</span>";
     energies.forEach(function(e){
@@ -1066,7 +1066,8 @@ function renderList(list) {
       fh += "<button onclick='event.stopPropagation();window._clientFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#7a9abf":"#2a2820") + ";background:" + (active?"#0a1525":"transparent") + ";color:" + (active?"#7a9abf":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
-    if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
+    if (energyFilter === "none") filtered = filtered.filter(function(i){ return !i.energy; });
+    else if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
     if (contextFilter.indexOf("all") === -1 && contextFilter.length > 0) filtered = filtered.filter(function(i){ return contextFilter.indexOf(i.context) !== -1; });
     if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.context === clientFilter; });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
@@ -1797,6 +1798,7 @@ loadData();
 </script>
 </body>
 </html>
+
 
 
 
