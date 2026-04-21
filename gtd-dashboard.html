@@ -101,6 +101,10 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
 .energy-picker-option{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left}
 .energy-picker-option:hover{background:#2a2820;color:#c9a96e}
 .energy-picker-option.clear{color:#6b6456;border-top:1px solid #2a2820;margin-top:2px;padding-top:8px}
+.client-picker-popup{position:fixed;background:#1a1814;border:1px solid #3a3828;border-radius:6px;padding:8px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:4px;min-width:160px}
+.client-picker-option{background:transparent;border:none;border-radius:4px;color:#e8e0d0;cursor:pointer;font-family:Georgia,serif;font-size:12px;padding:6px 10px;text-align:left}
+.client-picker-option:hover{background:#2a2820;color:#7a9abf}
+.client-picker-option.clear{color:#6b6456;border-top:1px solid #2a2820;margin-top:2px;padding-top:8px}
 .list-picker-btn:hover{background:#2a2820;color:#c9a96e}
 .list-picker-btn.cur{color:#c9a96e}
 .today-filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
@@ -640,6 +644,7 @@ function renderItem(item) {
   if (item.project) tags += "<span class='tag'>&#8599; " + esc(item.project) + "</span>";
   tags += "<span class='tag area-tag' onclick='event.stopPropagation();openAreaPicker(\"" + item.id + "\",this)' title='Set area' style='cursor:pointer;border:1px solid #3a3828'>" + (item.area ? "&#9632; " + esc(item.area) : "&#9632; Set area") + "</span>";
   tags += "<span class='tag energy-tag' onclick='event.stopPropagation();openEnergyPicker(\"" + item.id + "\",this)' title='Set energy' style='cursor:pointer;border:1px solid #3a3828'>" + (item.energy ? "&#9889; " + esc(item.energy) : "&#9889; Set energy") + "</span>";
+  tags += "<span class='tag client-tag' onclick='event.stopPropagation();openClientPicker(\"" + item.id + "\",this)' title='Set client' style='cursor:pointer;border:1px solid #3a3828;color:" + (item.client ? "#7a9abf" : "#6b6456") + "'>" + (item.client ? "&#9733; " + esc(item.client) : "&#9733; Set client") + "</span>";
   tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set due date' style='cursor:pointer;border:1px solid #3a3828'>" + (item.due_date ? "&#128197; " + esc(item.due_date) : "&#128197; Set date") + "</span>";
   if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
   tags += "<span class='tag' data-lp-id='" + item.id + "' data-lp-list='" + item.list + "' onclick='event.stopPropagation();openLP(this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
@@ -1255,6 +1260,15 @@ function undoLast() {
       method: "PATCH", headers: h,
       body: JSON.stringify({ due_date: action.prev.due_date })
     });
+  } else if (action.type === "change_client") {
+    var idx = allItems.findIndex(function(i){ return i.id === action.id; });
+    if (idx !== -1) allItems[idx].client = action.prev.client;
+    var idx2 = items.findIndex(function(i){ return i.id === action.id; });
+    if (idx2 !== -1) items[idx2].client = action.prev.client;
+    fetch(SBU + "/rest/v1/gtd_items?id=eq." + action.id, {
+      method: "PATCH", headers: h,
+      body: JSON.stringify({ client: action.prev.client })
+    });
   }
 
   updateCounts();
@@ -1504,6 +1518,58 @@ async function saveEnergy(itemId, energy) {
     if (idx2 !== -1) items[idx2].energy = data[0].energy;
     renderList(currentList);
     showUndoToast("Energy \u2192 " + (energy || "cleared"));
+  }
+}
+
+var activeClientPicker = null;
+var CLIENTS = ["Goodles", "W Labs", "Wild", "Neilmed", "Javvy", "Just Ingredients", "Quip"];
+
+function openClientPicker(itemId, tagEl) {
+  if (activeClientPicker) { activeClientPicker.remove(); activeClientPicker = null; }
+  var popup = document.createElement("div");
+  popup.className = "client-picker-popup";
+  var html = "";
+  CLIENTS.forEach(function(c) {
+    html += "<button class='client-picker-option' onclick='saveClient(\"" + itemId + "\",\"" + c + "\")'>&#9733; " + c + "</button>";
+  });
+  html += "<button class='client-picker-option clear' onclick='saveClient(\"" + itemId + "\",null)'>&#10005; Clear client</button>";
+  popup.innerHTML = html;
+  var rect = tagEl.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 4) + "px";
+  popup.style.left = rect.left + "px";
+  document.body.appendChild(popup);
+  activeClientPicker = popup;
+  setTimeout(function(){
+    document.addEventListener("click", closeClientPickerOutside, { once: true });
+  }, 50);
+}
+
+function closeClientPickerOutside(e) {
+  if (activeClientPicker && !activeClientPicker.contains(e.target)) {
+    activeClientPicker.remove(); activeClientPicker = null;
+  }
+}
+
+async function saveClient(itemId, client) {
+  if (activeClientPicker) { activeClientPicker.remove(); activeClientPicker = null; }
+  var item = allItems.find(function(i){ return i.id === itemId; });
+  if (item) {
+    undoStack.push({ type: "change_client", id: itemId, prev: { client: item.client }, msg: "Client changed to " + (client || "none") });
+  }
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  var res = await fetch(SBU + "/rest/v1/gtd_items?id=eq." + itemId, {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ client: client })
+  });
+  var data = await res.json();
+  if (data && data[0]) {
+    var idx = allItems.findIndex(function(i){ return i.id === itemId; });
+    if (idx !== -1) allItems[idx].client = data[0].client;
+    var idx2 = items.findIndex(function(i){ return i.id === itemId; });
+    if (idx2 !== -1) items[idx2].client = data[0].client;
+    updateCounts();
+    renderList(currentList);
+    showUndoToast("Client \u2192 " + (client || "cleared"));
   }
 }
 
