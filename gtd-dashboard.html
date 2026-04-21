@@ -1057,7 +1057,8 @@ function renderList(list) {
     });
     var allContextValues = [...new Set(items.filter(function(i){ return i.list==="next" && i.context; }).map(function(i){ return i.context; }))].sort();
     var contextOnly = ["all"].concat(allContextValues.filter(function(c){ return c.charAt(0) === "@"; }));
-    var clientOnly = ["all"].concat(allContextValues.filter(function(c){ return c.charAt(0) !== "@"; }));
+    var allClientValues = [...new Set(items.filter(function(i){ return i.list==="next" && i.client; }).map(function(i){ return i.client; }))].sort();
+    var clientOnly = ["all"].concat(allClientValues);
     fh += "<span style='font-size:11px;color:#6b6456;margin-left:6px;margin-right:2px'>CONTEXT:</span>";
     contextOnly.forEach(function(c){
       var active = contextFilter.indexOf(c) !== -1;
@@ -1074,7 +1075,7 @@ function renderList(list) {
     if (energyFilter === "none") filtered = filtered.filter(function(i){ return !i.energy; });
     else if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
     if (contextFilter.indexOf("all") === -1 && contextFilter.length > 0) filtered = filtered.filter(function(i){ return contextFilter.indexOf(i.context) !== -1; });
-    if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.context === clientFilter; });
+    if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.client === clientFilter; });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else if (list === "waiting") {
     if (window._waitingHideScheduled === undefined) window._waitingHideScheduled = false;
