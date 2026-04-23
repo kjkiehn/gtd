@@ -491,7 +491,7 @@ function updateCounts() {
     var el = document.getElementById("c-" + l);
     if (el) {
       if (l === "next") {
-        el.textContent = visible.filter(function(i){ return i.list === "next" && (!i.due_date || i.due_date <= today); }).length;
+        el.textContent = visible.filter(function(i){ return i.list === "next" && (!i.start_date || i.start_date <= today); }).length;
       } else {
         el.textContent = visible.filter(function(i){ return i.list === l; }).length;
       }
@@ -521,11 +521,11 @@ function updateCounts() {
   var dataEl = document.getElementById("c-data");
   if (dataEl) dataEl.textContent = tables.length;
   document.getElementById("c-today").textContent = visible.filter(function(i){
-    return i.list === "next" && i.due_date && i.due_date <= today;
+    return i.list === "next" && ((i.due_date && i.due_date <= today) || (i.start_date && i.start_date <= today));
   }).length;
   var schedEl = document.getElementById("c-scheduled");
   if (schedEl) schedEl.textContent = visible.filter(function(i){
-    return i.list === "next" && i.due_date && i.due_date > today;
+    return i.list === "next" && i.start_date && i.start_date > today;
   }).length;
   // Transactions count
   fetch(SBU + "/rest/v1/gtd_transactions?select=id&status=neq.closed", { headers: { apikey: SBK, Authorization: "Bearer " + SBK } })
@@ -665,7 +665,7 @@ function renderList(list) {
   if (list === "today") {
     var allToday = items.filter(function(i){
       if (i.list !== "next" && i.list !== "waiting") return false;
-      return i.due_date && i.due_date <= today;
+      return (i.due_date && i.due_date <= today) || (i.start_date && i.start_date <= today);
     });
     // Build unique project options
     var todayProjects = ["all"].concat([...new Set(allToday.filter(function(i){ return i.project; }).map(function(i){ return i.project; }))].sort());
@@ -993,14 +993,14 @@ function renderList(list) {
   }
 
   if (list === "scheduled") {
-    var scheduled = items.filter(function(i){ return i.list === "next" && i.due_date && i.due_date > today; });
-    scheduled.sort(function(a,b){ return a.due_date > b.due_date ? 1 : -1; });
+    var scheduled = items.filter(function(i){ return i.list === "next" && i.start_date && i.start_date > today; });
+    scheduled.sort(function(a,b){ return a.start_date > b.start_date ? 1 : -1; });
     var h = "<div class='list-header'><h2>&#128197; Scheduled</h2><span class='count'>" + scheduled.length + " items</span></div>";
     if (!scheduled.length) { h += "<div class='empty'>Nothing scheduled for the future.</div>"; main.innerHTML = h; return; }
     var dateMap = {};
     scheduled.forEach(function(i){
-      if (!dateMap[i.due_date]) dateMap[i.due_date] = [];
-      dateMap[i.due_date].push(i);
+      if (!dateMap[i.start_date]) dateMap[i.start_date] = [];
+      dateMap[i.start_date].push(i);
     });
     Object.keys(dateMap).sort().forEach(function(date) {
       var d = new Date(date + 'T12:00:00');
@@ -1038,7 +1038,7 @@ function renderList(list) {
   var filtered = items.filter(function(i){
     if (i.list !== list) return false;
     if (list === "next") {
-      if (i.due_date) return i.due_date <= today;
+      if (i.start_date && i.start_date > today) return false;
       return true;
     }
     return true;
@@ -1865,6 +1865,7 @@ loadData();
 </script>
 </body>
 </html>
+
 
 
 
