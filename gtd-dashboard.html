@@ -662,6 +662,41 @@ function renderItem(item) {
   return h;
 }
 
+function quickAddToInbox() {
+  var inp = document.getElementById("inbox-quick-add");
+  if (!inp) return;
+  var title = inp.value.trim();
+  if (!title) return;
+  inp.disabled = true;
+  var h = { apikey: SBK, Authorization: "Bearer " + SBK, "Content-Type": "application/json", Prefer: "return=representation" };
+  var payload = { title: title, list: "inbox", status: "active" };
+  fetch(SBU + "/rest/v1/gtd_items", {
+    method: "POST",
+    headers: h,
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d && d[0]) {
+        allItems.unshift(d[0]);
+        items.unshift(d[0]);
+        updateCounts();
+        renderList(currentList);
+        setTimeout(function(){
+          var ni = document.getElementById("inbox-quick-add");
+          if (ni) { ni.focus(); }
+        }, 0);
+      } else {
+        inp.disabled = false;
+        inp.focus();
+        alert("Failed to add item.");
+      }
+    }).catch(function(e){
+      inp.disabled = false;
+      inp.focus();
+      alert("Failed to add item: " + e.message);
+    });
+}
+
 function renderList(list) {
   var main = document.getElementById("main");
   var today = new Date().toISOString().split("T")[0];
@@ -1100,6 +1135,14 @@ function renderList(list) {
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else {
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>";
+  }
+  if (list === "inbox") {
+    h += "<div style='margin-bottom:12px;display:flex;gap:6px;align-items:center'>" +
+         "<input id='inbox-quick-add' type='text' placeholder='Add to inbox \u2014 type and press Enter' " +
+         "onkeydown='if(event.key===\"Enter\"){event.preventDefault();quickAddToInbox();}' " +
+         "style='flex:1;padding:8px 10px;border-radius:6px;border:1px solid #2a2820;background:#0f0e0b;color:#d7d2c4;font-size:14px;font-family:inherit;outline:none' autofocus>" +
+         "<button onclick='quickAddToInbox()' style='padding:8px 14px;border-radius:6px;border:1px solid #c94a2a;background:#2a1008;color:#c94a2a;cursor:pointer;font-size:13px;font-family:inherit'>Add</button>" +
+         "</div>";
   }
   if (!filtered.length) h += "<div class='empty'>This list is empty.</div>";
   else filtered.forEach(function(item){ h += renderItem(item); });
