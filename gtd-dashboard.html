@@ -134,6 +134,7 @@ body{background:#0f0e0c;color:#e8e0d0;font-family:Georgia,serif;min-height:100vh
       <button onclick="toggleClient('javvy')" id="ctog-javvy" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Javvy</button>
       <button onclick="toggleClient('justingredients')" id="ctog-justingredients" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Just Ingredients</button>
       <button onclick="toggleClient('quip')" id="ctog-quip" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Quip</button>
+      <button onclick="toggleClient('petlife')" id="ctog-petlife" style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid #2a2820;background:transparent;color:#6b6456;cursor:pointer">Pet Life</button>
     </div>
     <button class="search-btn" onclick="openSearch()" title="Search (⌘K)">&#128269; Search <span class="search-kbd">⌘K</span></button>
     <div class="stats" id="stats"><span>Loading...</span><button class="refresh" onclick="loadData()">&#8635; refresh</button></div>
@@ -544,6 +545,7 @@ function matchesClientFilter(i) {
   if (clientFilters.has("javvy") && cl === "javvy") return true;
   if (clientFilters.has("justingredients") && cl === "just ingredients") return true;
   if (clientFilters.has("quip") && cl === "quip") return true;
+  if (clientFilters.has("petlife") && cl === "pet life") return true;
   return false;
 }
 
@@ -725,6 +727,7 @@ function renderList(list) {
       {value:"javvy", label:"Javvy"},
       {value:"justingredients", label:"Just Ingredients"},
       {value:"quip", label:"Quip"},
+      {value:"petlife", label:"Pet Life"},
     ];
     function matchesTodayClient(i, c) {
       if (c === "all") return true;
@@ -736,6 +739,7 @@ function renderList(list) {
       if (c === "javvy") return cl === "javvy";
       if (c === "justingredients") return cl === "just ingredients";
       if (c === "quip") return cl === "quip";
+      if (c === "petlife") return cl === "pet life";
       return true;
     }
     // Apply filters
@@ -1592,7 +1596,7 @@ async function saveEnergy(itemId, energy) {
 }
 
 var activeClientPicker = null;
-var CLIENTS = ["Goodles", "W Labs", "Wild", "Neilmed", "Javvy", "Just Ingredients", "Quip"];
+var CLIENTS = ["Goodles", "W Labs", "Wild", "Neilmed", "Javvy", "Just Ingredients", "Quip", "Pet Life"];
 
 function openClientPicker(itemId, tagEl) {
   if (activeClientPicker) { activeClientPicker.remove(); activeClientPicker = null; }
