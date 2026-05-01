@@ -653,6 +653,17 @@ function renderItem(item) {
   else if (item.start_date) dateTagLabel = "&#8987; " + esc(item.start_date);
   else dateTagLabel = "&#128197; Set date";
   tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set dates' style='cursor:pointer;border:1px solid #3a3828'>" + dateTagLabel + "</span>";
+  if (item.list === "next" && item.created_at) {
+    var ageDays = Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86400000);
+    var ageLabel;
+    if (ageDays < 1) ageLabel = "today";
+    else if (ageDays === 1) ageLabel = "1d ago";
+    else if (ageDays < 14) ageLabel = ageDays + "d ago";
+    else if (ageDays < 60) ageLabel = Math.floor(ageDays/7) + "w ago";
+    else ageLabel = Math.floor(ageDays/30) + "mo ago";
+    var ageColor = ageDays < 7 ? "#6b6456" : (ageDays < 30 ? "#b89968" : "#c94a2a");
+    tags += "<span class='tag' title='Added " + esc(item.created_at.split('T')[0]) + "' style='border:1px solid #2a2820;color:" + ageColor + "'>+ " + ageLabel + "</span>";
+  }
   if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
   tags += "<span class='tag' data-lp-id='" + item.id + "' data-lp-list='" + item.list + "' onclick='event.stopPropagation();openLP(this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
   if (tags) h += "<div class='tags'>" + tags + "</div>";
@@ -1122,10 +1133,21 @@ function renderList(list) {
       fh += "<button onclick='event.stopPropagation();window._clientFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#7a9abf":"#2a2820") + ";background:" + (active?"#0a1525":"transparent") + ";color:" + (active?"#7a9abf":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
+    var sortMode = window._nextSort || "default";
+    var sortOptions = [["default","Default"],["oldest","Oldest first"],["newest","Newest first"]];
+    fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
+    fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>SORT:</span>";
+    sortOptions.forEach(function(opt){
+      var active = sortMode === opt[0];
+      fh += "<button onclick='event.stopPropagation();window._nextSort=\"" + opt[0] + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#b89968":"#2a2820") + ";background:" + (active?"#1a1408":"transparent") + ";color:" + (active?"#b89968":"#6b6456") + ";cursor:pointer'>" + opt[1] + "</button>";
+    });
+    fh += "</div>";
     if (energyFilter === "none") filtered = filtered.filter(function(i){ return !i.energy; });
     else if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
     if (contextFilter.indexOf("all") === -1 && contextFilter.length > 0) filtered = filtered.filter(function(i){ return contextFilter.indexOf(i.context) !== -1; });
     if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.client === clientFilter; });
+    if (sortMode === "oldest") filtered.sort(function(a,b){ return (a.created_at||"").localeCompare(b.created_at||""); });
+    else if (sortMode === "newest") filtered.sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
   } else if (list === "waiting") {
     if (window._waitingHideScheduled === undefined) window._waitingHideScheduled = false;
