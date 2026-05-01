@@ -638,7 +638,19 @@ function showList(btn, list) {
 function renderItem(item) {
   var h = "<div class='item' data-item-id='" + item.id + "' onclick='this.classList.toggle(\"expanded\")'>";
   h += "<button class='circle' onclick='event.stopPropagation();completeItem(event,\"" + item.id + "\")' title='Complete'></button>";
-  h += "<div class='item-body'><div class='item-title'>" + esc(item.title) + "</div>";
+  var ageBadge = "";
+  if (item.list === "next" && item.created_at) {
+    var ageDays = Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86400000);
+    var ageLabel;
+    if (ageDays < 1) ageLabel = "today";
+    else if (ageDays === 1) ageLabel = "1d";
+    else if (ageDays < 14) ageLabel = ageDays + "d";
+    else if (ageDays < 60) ageLabel = Math.floor(ageDays/7) + "w";
+    else ageLabel = Math.floor(ageDays/30) + "mo";
+    var ageColor = ageDays < 7 ? "#6b6456" : (ageDays < 30 ? "#b89968" : "#c94a2a");
+    ageBadge = "<span title='Added " + esc(item.created_at.split('T')[0]) + "' style='font-size:10px;color:" + ageColor + ";margin-left:8px;font-variant-numeric:tabular-nums;letter-spacing:0.05em'>+" + ageLabel + "</span>";
+  }
+  h += "<div class='item-body'><div class='item-title'>" + esc(item.title) + ageBadge + "</div>";
   h += "<div class='item-details'>";
   if (item.notes) h += "<div>" + esc(item.notes) + "</div>";
   var tags = "";
@@ -653,17 +665,6 @@ function renderItem(item) {
   else if (item.start_date) dateTagLabel = "&#8987; " + esc(item.start_date);
   else dateTagLabel = "&#128197; Set date";
   tags += "<span class='tag date-tag' onclick='event.stopPropagation();openDatePicker(\"" + item.id + "\",this)' title='Set dates' style='cursor:pointer;border:1px solid #3a3828'>" + dateTagLabel + "</span>";
-  if (item.list === "next" && item.created_at) {
-    var ageDays = Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86400000);
-    var ageLabel;
-    if (ageDays < 1) ageLabel = "today";
-    else if (ageDays === 1) ageLabel = "1d ago";
-    else if (ageDays < 14) ageLabel = ageDays + "d ago";
-    else if (ageDays < 60) ageLabel = Math.floor(ageDays/7) + "w ago";
-    else ageLabel = Math.floor(ageDays/30) + "mo ago";
-    var ageColor = ageDays < 7 ? "#6b6456" : (ageDays < 30 ? "#b89968" : "#c94a2a");
-    tags += "<span class='tag' title='Added " + esc(item.created_at.split('T')[0]) + "' style='border:1px solid #2a2820;color:" + ageColor + "'>+ " + ageLabel + "</span>";
-  }
   if (item.waiting_for) tags += "<span class='tag'>&#8987; " + esc(item.waiting_for) + "</span>";
   tags += "<span class='tag' data-lp-id='" + item.id + "' data-lp-list='" + item.list + "' onclick='event.stopPropagation();openLP(this)' title='Move to list' style='cursor:pointer;border:1px solid #3a3828;color:#9a9080'>&#8646; " + esc(item.list) + "</span>";
   if (tags) h += "<div class='tags'>" + tags + "</div>";
