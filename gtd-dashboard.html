@@ -785,7 +785,22 @@ function renderList(list) {
     h += "<label style='margin-left:12px'>View:</label>";
     h += "<button onclick='window._todayEnergyView=false;window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (!evActive ? "#c94a2a" : "#2a2820") + ";background:" + (!evActive ? "#2a1008" : "transparent") + ";color:" + (!evActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer;margin-left:4px\">&#9889; List</button>";
     h += "<button onclick='window._todayEnergyView=true;window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (evActive ? "#c94a2a" : "#2a2820") + ";background:" + (evActive ? "#2a1008" : "transparent") + ";color:" + (evActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer\">&#9889; Energy</button>";
+    // Sort by age
+    var todaySort = window._todaySort || "default";
+    h += "<label style='margin-left:12px'>Sort:</label><select onchange='window._todaySort=this.value;window._renderToday()' style='font-size:11px'>";
+    [["default","Default"],["oldest","Oldest age"],["newest","Newest age"]].forEach(function(o){
+      h += "<option value='" + o[0] + "'" + (o[0]===todaySort?" selected":"") + ">" + o[1] + "</option>";
+    });
+    h += "</select>";
     h += "</div>";
+    // Apply sort to both nextItems and waitingItems
+    if (todaySort === "oldest") {
+      nextItems.sort(function(a,b){ return (a.created_at||"").localeCompare(b.created_at||""); });
+      waitingItems.sort(function(a,b){ return (a.created_at||"").localeCompare(b.created_at||""); });
+    } else if (todaySort === "newest") {
+      nextItems.sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
+      waitingItems.sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
+    }
     if (!filtered.length) { h += "<div class='empty'>Nothing due today.</div>"; }
     else if (window._todayEnergyView) {
       // Energy view — group by energy level
@@ -804,6 +819,8 @@ function renderList(list) {
       });
       energyGroups.forEach(function(g){
         if (!g.items.length) return;
+        if (todaySort === "oldest") g.items.sort(function(a,b){ return (a.created_at||"").localeCompare(b.created_at||""); });
+        else if (todaySort === "newest") g.items.sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
         h += "<div style='font-size:11px;color:" + g.color + ";letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;margin-top:12px'>" + g.label + " (" + g.items.length + ")</div>";
         g.items.forEach(function(item){ h += renderItem(item); });
       });
