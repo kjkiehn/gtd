@@ -727,6 +727,7 @@ function renderList(list) {
     var tf_proj = window._todayProjFilter || "all";
     if (!window._todayContextFilters) window._todayContextFilters = new Set(["all"]);
     var tf_ctxSet = window._todayContextFilters;
+    var tf_recur = window._todayRecurringFilter || "all";
     // Build unique @context options from today items
     var todayContexts = [...new Set(allToday.filter(function(i){ return i.context && i.context.charAt(0) === "@"; }).map(function(i){ return i.context; }))].sort();
     // Client options — fixed list matching top-level buttons
@@ -759,6 +760,8 @@ function renderList(list) {
       if (!matchesTodayClient(i, tf_client)) return false;
       if (tf_proj !== "all" && i.project !== tf_proj) return false;
       if (!tf_ctxSet.has("all") && !tf_ctxSet.has(i.context || "")) return false;
+      if (tf_recur === "recurring" && !i.recurrence) return false;
+      if (tf_recur === "nonrecurring" && i.recurrence) return false;
       return true;
     });
     var nextItems = filtered.filter(function(i){ return i.list === "next"; });
@@ -785,6 +788,12 @@ function renderList(list) {
     h += "<label style='margin-left:12px'>View:</label>";
     h += "<button onclick='window._todayEnergyView=false;window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (!evActive ? "#c94a2a" : "#2a2820") + ";background:" + (!evActive ? "#2a1008" : "transparent") + ";color:" + (!evActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer;margin-left:4px\">&#9889; List</button>";
     h += "<button onclick='window._todayEnergyView=true;window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (evActive ? "#c94a2a" : "#2a2820") + ";background:" + (evActive ? "#2a1008" : "transparent") + ";color:" + (evActive ? "#c94a2a" : "#6b6456") + ";cursor:pointer\">&#9889; Energy</button>";
+    // Recurring filter
+    h += "<label style='margin-left:12px'>Recurring:</label>";
+    [["all","All"],["recurring","Recurring"],["nonrecurring","Non-recurring"]].forEach(function(opt){
+      var rActive = tf_recur === opt[0];
+      h += "<button onclick='window._todayRecurringFilter=\"" + opt[0] + "\";window._renderToday()' style=\"font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid " + (rActive ? "#b89968" : "#2a2820") + ";background:" + (rActive ? "#1a1408" : "transparent") + ";color:" + (rActive ? "#b89968" : "#6b6456") + ";cursor:pointer;margin-left:4px\">" + opt[1] + "</button>";
+    });
     // Sort by age
     var todaySort = window._todaySort || "default";
     h += "<label style='margin-left:12px'>Sort:</label><select onchange='window._todaySort=this.value;window._renderToday()' style='font-size:11px'>";
@@ -1125,6 +1134,7 @@ function renderList(list) {
   var energyFilter = window._energyFilter || "all";
   var contextFilter = window._contextFilter || ["all"];
   var clientFilter = window._clientFilter || "all";
+  var recurringFilter = window._nextRecurringFilter || "all";
 
   if (list === "next") {
     var energies = ["all","high","medium","low","none"];
@@ -1151,6 +1161,14 @@ function renderList(list) {
       fh += "<button onclick='event.stopPropagation();window._clientFilter=\"" + c + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#7a9abf":"#2a2820") + ";background:" + (active?"#0a1525":"transparent") + ";color:" + (active?"#7a9abf":"#6b6456") + ";cursor:pointer'>" + c + "</button>";
     });
     fh += "</div>";
+    // Recurring filter row
+    fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
+    fh += "<span style='font-size:11px;color:#6b6456;margin-right:2px'>RECURRING:</span>";
+    [["all","All"],["recurring","Recurring only"],["nonrecurring","Non-recurring only"]].forEach(function(opt){
+      var active = recurringFilter === opt[0];
+      fh += "<button onclick='event.stopPropagation();window._nextRecurringFilter=\"" + opt[0] + "\";renderList(\"next\")' style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid " + (active?"#b89968":"#2a2820") + ";background:" + (active?"#1a1408":"transparent") + ";color:" + (active?"#b89968":"#6b6456") + ";cursor:pointer'>" + opt[1] + "</button>";
+    });
+    fh += "</div>";
     var sortMode = window._nextSort || "default";
     var sortOptions = [["default","Default"],["oldest","Oldest first"],["newest","Newest first"]];
     fh += "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center'>";
@@ -1164,6 +1182,8 @@ function renderList(list) {
     else if (energyFilter !== "all") filtered = filtered.filter(function(i){ return i.energy === energyFilter; });
     if (contextFilter.indexOf("all") === -1 && contextFilter.length > 0) filtered = filtered.filter(function(i){ return contextFilter.indexOf(i.context) !== -1; });
     if (clientFilter !== "all") filtered = filtered.filter(function(i){ return i.client === clientFilter; });
+    if (recurringFilter === "recurring") filtered = filtered.filter(function(i){ return !!i.recurrence; });
+    else if (recurringFilter === "nonrecurring") filtered = filtered.filter(function(i){ return !i.recurrence; });
     if (sortMode === "oldest") filtered.sort(function(a,b){ return (a.created_at||"").localeCompare(b.created_at||""); });
     else if (sortMode === "newest") filtered.sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
     var h = "<div class='list-header'><h2>" + icons[list] + " " + labels[list] + "</h2><span class='count'>" + filtered.length + " items</span></div>" + fh;
